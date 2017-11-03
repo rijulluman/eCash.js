@@ -1,0 +1,20 @@
+{
+  "mongo_url":"mongodb://userName:password@domain.com:27017,subdomain.domain.com:27017?authSource=admin",
+
+  "redis" : {
+    "sessionStore" : {
+      "host"    :    "127.0.0.1",
+      "port"    :    6379
+    },
+    "MA" : {
+      "host"    :    "127.0.0.1",
+      "port"    :    7662
+    },
+    "SL" : {
+      "host"    :    "127.0.0.1",
+      "port"    :    7675
+    }
+  },
+
+  "express_port": 8080
+}

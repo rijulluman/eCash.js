@@ -1,0 +1,22 @@
+{
+  "mongo_url":"mongodb://localhost:27017/rlc",
+  "mongo_coll_transaction" : "transactions",
+  "mongo_coll_block"  : "blocks",
+
+  "redis" :	{
+    "sessionStore" : {
+      "host"    :    "127.0.0.1",
+      "port"    :    6379
+    },
+    "MA" : {
+      "host"    :    "127.0.0.1",
+      "port"    :    6379
+    },
+    "SL" : {
+      "host"    :    "127.0.0.1",
+      "port"    :    6379
+    }
+  },
+
+  "express_port": 3000
+}
