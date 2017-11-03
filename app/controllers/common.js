@@ -13,7 +13,13 @@ var CommonFunctions = {
         callback(err); 
       }
       else{
-        callback(null, parseInt(nonceHex.toString('hex'), 16));
+        var nonce = parseInt(nonceHex.toString('hex'), 16);
+        if(nonce > Constants.MINIMUM_TRANSACTION_NONCE){
+          callback(null, nonce);
+        }
+        else{
+          CommonFunctions.generateTransactionNonce(callback);
+        }
       }
     });
   },
@@ -54,11 +60,11 @@ var CommonFunctions = {
   },
 
   generateSignature : function(txId, privateKey){
-    return this.bufferToHexString(secp256k1.sign(this.hexStringToBuffer(txId), privateKey).signature);
+    return CommonFunctions.bufferToHexString(secp256k1.sign(CommonFunctions.hexStringToBuffer(txId), privateKey).signature);
   },
 
   verifySignature : function(txId, publicKey, signature){
-    return secp256k1.verify(this.hexStringToBuffer(txId), this.hexStringToBuffer(signature), this.hexStringToBuffer(publicKey));
+    return secp256k1.verify(CommonFunctions.hexStringToBuffer(txId), CommonFunctions.hexStringToBuffer(signature), CommonFunctions.hexStringToBuffer(publicKey));
   },
 
 }

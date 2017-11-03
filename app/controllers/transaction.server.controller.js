@@ -43,7 +43,7 @@ exports.read = function(req, res) {
 };
 
 exports.validate = function (req, res, next) {
-    var transaction = req.transaction || req.body;
+    var transaction = req.transaction != null ? req.transaction : req.body;
     if(!transaction){
         return ErrorCodeHandler.getErrorJSONData({'code':5, 'res':res});
     }
