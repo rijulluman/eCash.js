@@ -6,6 +6,21 @@ var async = require("async");
 var redisPath = Constants.redisPath;
 
 var RedisHandler = {
+
+	getCurrentBlock : function(callback){
+	  	RedisStoreSL.get(redisPath.currentBlock, function(err, reply){
+	  		if(err){
+	  			callback(err);	
+	  		}
+	  		else if(reply == null){
+	  			// TODO : Read & Load from Mongo Here
+	  			callback(null, 65);
+	  		}
+	  		else{
+	  			callback(null, parseInt(reply));
+	  		}
+	  	});
+	},
   
   addUnconfirmedTransaction: function(transaction, callback) {
   	async.waterfall([
@@ -37,23 +52,19 @@ var RedisHandler = {
   				callback(null, true);
   			}
   		});
-    
   },
 
-  getCurrentBlock : function(callback){
-  	RedisStoreSL.get(redisPath.currentBlock, function(err, reply){
+  getUnconfirmedTransactionById: function(txId, callback) {
+  	RedisStoreSL.get(redisPath.unconfirmedTransaction + txId, function(err, reply){
   		if(err){
   			callback(err);	
   		}
-  		else if(reply == null){
-  			// TODO : Read & Load from Mongo Here
-  			callback(null, 65);
-  		}
   		else{
-  			callback(null, parseInt(reply));
+  			callback(null, reply ? JSON.parse(reply) : null);
   		}
   	});
   },
+  
 //End of export   
 }
 

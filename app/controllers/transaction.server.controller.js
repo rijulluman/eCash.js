@@ -31,7 +31,10 @@ exports.transactionByID = function(req, res, next, id) {
     if(['add'].indexOf(id)!==-1){
         next();
     }else{
-        // TODO
+        RedisHandler.getUnconfirmedTransactionById(id, function(err, transaction){
+            req.transaction = transaction;
+            next();
+        });
     }
 };
 

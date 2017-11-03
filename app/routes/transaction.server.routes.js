@@ -15,6 +15,6 @@ module.exports = function (app) {
     app.route('/api/transaction/create').post(transaction.create, transaction.validate, transaction.addUnconfirmed, transaction.broadcast);
     app.route('/api/transaction/unconfirmed/:transactionId').get(transaction.read);
 
-    // Finish by binding the Listing middleware
+    // Finish by binding the id middleware
     app.param('transactionId', transaction.transactionByID);
 };
