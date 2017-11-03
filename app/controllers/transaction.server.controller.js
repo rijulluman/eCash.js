@@ -43,7 +43,41 @@ exports.read = function(req, res) {
 };
 
 exports.validate = function (req, res, next) {
-    
+    var transaction = req.transaction || req.body;
+    if(!transaction){
+        return ErrorCodeHandler.getErrorJSONData({'code':5, 'res':res});
+    }
+    transaction.amount = validateCoinValue(transaction.amount);
+    if(!transaction.amount){
+        return ErrorCodeHandler.getErrorJSONData({'code':6, 'res':res});
+    }
+    transaction.fees = validateCoinValue(transaction.fees);
+    if(!transaction.fees){
+        return ErrorCodeHandler.getErrorJSONData({'code':7, 'res':res});
+    }
+    if(!transaction.sender || !CommonFunctions.validatePublicKeyHexString(transaction.sender)){
+        return ErrorCodeHandler.getErrorJSONData({'code':8, 'res':res});
+    }
+    transaction.sender = transaction.sender.toLowerCase();
+    if(!transaction.receiver || !CommonFunctions.validatePublicKeyHexString(transaction.receiver)){
+        return ErrorCodeHandler.getErrorJSONData({'code':9, 'res':res});
+    }
+    transaction.receiver = transaction.receiver.toLowerCase();
+    if(!transaction.nonce || isNaN(parseInt(transaction.nonce)) || parseInt(transaction.nonce) < Constants.MINIMUM_TRANSACTION_NONCE){
+        return ErrorCodeHandler.getErrorJSONData({'code':13, 'res':res});
+    }
+    transaction.nonce = parseInt(transaction.nonce);
+    if(CommonFunctions.generateTransactionHash(transaction) != transaction.txId){
+        return ErrorCodeHandler.getErrorJSONData({'code':14, 'res':res});
+    }
+    transaction.txId = transaction.txId.toLowerCase();
+    if(!CommonFunctions.verifySignature(transaction.txId, transaction.sender, transaction.signature)){
+        return ErrorCodeHandler.getErrorJSONData({'code':15, 'res':res});
+    }
+    transaction.signature = transaction.signature.toLowerCase();
+    req.transaction = transaction;
+    next();
+
 };
 
 exports.create = function (req, res, next) {
@@ -53,7 +87,7 @@ exports.create = function (req, res, next) {
         receiver    : "",
         amount      : 0,
         fees        : 0,
-        deadline    : "",
+        deadline    : 0,
         nonce       : 0,
         signature   : ""
     };
@@ -68,33 +102,73 @@ exports.create = function (req, res, next) {
     if(!transaction.fees){
         return ErrorCodeHandler.getErrorJSONData({'code':7, 'res':res});
     }
+    if(!req.body.sender || !CommonFunctions.validatePublicKeyHexString(req.body.sender)){
+        return ErrorCodeHandler.getErrorJSONData({'code':8, 'res':res});
+    }
+    transaction.sender = req.body.sender.toLowerCase();
+    if(!req.body.receiver || !CommonFunctions.validatePublicKeyHexString(req.body.receiver)){
+        return ErrorCodeHandler.getErrorJSONData({'code':9, 'res':res});
+    }
+    transaction.receiver = req.body.receiver.toLowerCase();
+    if(!req.body.privateKey || !CommonFunctions.validatePrivateKeyHexString(req.body.privateKey)){
+        return ErrorCodeHandler.getErrorJSONData({'code':10, 'res':res});
+    }
+    var privateKey = CommonFunctions.hexStringToBuffer(req.body.privateKey.toLowerCase());
 
     async.waterfall([
+        function defaultDeadline(cb){
+            if(!req.body.deadline){
+                RedisHandler.getCurrentBlock(function(err, deadline){
+                    if(err){
+                        return ErrorCodeHandler.getErrorJSONData({'code':3, 'res':res});
+                    }
+                    else{
+                        transaction.deadline = deadline + Constants.TRANSACTION_DEADLINE_OFFSET;
+                    }
+                    cb();
+                });
+            }
+            else if(isNaN(parseInt(req.body.deadline))){
+                return ErrorCodeHandler.getErrorJSONData({'code':11, 'res':res});
+            }
+            else{
+                transaction.deadline = parseInt(req.body.deadline);
+                cb();
+            }
+        },
         function generateNonce(cb){
             CommonFunctions.generateTransactionNonce(function(err, nonce){
                 if(err){
-                    return ErrorCodeHandler.getErrorJSONData({'code':9, 'res':res});
+                    return ErrorCodeHandler.getErrorJSONData({'code':12, 'res':res});
                 }
                 transaction.nonce = nonce;
                 cb();
             });
         },
-
+        function generateTransactionId(cb){
+            transaction.txId = CommonFunctions.generateTransactionHash(transaction);
+            cb();
+        },
+        function generateSignature(cb){
+            transaction.signature = CommonFunctions.generateSignature(transaction.txId, privateKey);
+            cb();
+        },
+        
 
         ], function(){
-            console.log(transaction);
+            req.transaction = transaction;
+            next();
         });
 
     
 };
 
 exports.broadcast = function (req, res, next) {
-    
+    res.status(200).jsonp(req.transaction);
 };
 
 exports.addUnconfirmed = function (req, res, next) {
-    var transaction = {};
-    redisHandler.addUnconfirmedTransaction(transaction, function () {
-        // body...
+    RedisHandler.addUnconfirmedTransaction(req.transaction, function (err, reply) {
+        next();
     });
 };

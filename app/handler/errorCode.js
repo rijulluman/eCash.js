@@ -15,8 +15,16 @@ var ERROR_CODES  =   new Array();
 /* TRANSACTION    */ ERROR_CODES[5]    =  'Transaction Data Missing';
 /* TRANSACTION    */ ERROR_CODES[6]    =  'Invalid Transaction Amount';
 /* TRANSACTION    */ ERROR_CODES[7]    =  'Invalid Transaction Fees';
-/* TRANSACTION    */ ERROR_CODES[8]    =  '';
-/* TRANSACTION    */ ERROR_CODES[9]    =  'Error Generating Nonce';
+/* TRANSACTION    */ ERROR_CODES[8]    =  'Invalid Sender Address';
+/* TRANSACTION    */ ERROR_CODES[9]    =  'Invalid Receiver Address';
+
+/* TRANSACTION    */ ERROR_CODES[10]   =  'Invalid Private Key';
+/* TRANSACTION    */ ERROR_CODES[11]   =  'Given Deadline is invalid';
+/* TRANSACTION    */ ERROR_CODES[12]   =  'Error Generating Nonce';
+/* TRANSACTION    */ ERROR_CODES[13]   =  'Invalid Nonce / Nonce too small';
+/* TRANSACTION    */ ERROR_CODES[14]   =  'Invalid txId (Transaction Hash does not match)';
+/* TRANSACTION    */ ERROR_CODES[15]   =  'Signature Mismatch / Unauthenticated Transaction';
+
 
 
 // @Response Handler

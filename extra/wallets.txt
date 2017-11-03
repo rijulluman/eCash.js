@@ -1,0 +1,11 @@
+WALLET 1 : 
+{
+    "privateKey": "e79872d5f7af82e4561ee43c74fd4aa1d8f2b0d2dc7b95b865c19cd96af5e575",
+    "publicKey": "03409f79ae890a80dea6c4dffcc9b912b121553353570fee498af1c2d6b8c7e9f5"
+}
+
+WALLET 2 : 
+{
+    "privateKey": "418836c2f238940f9f62115800075b956ec0f167a60bce42663e9958f62eae7b",
+    "publicKey": "027ce749cc99715d1dd0904c7ccf5e3a9988e57fbbecfe9b0d73f7fff32f3b12a6"
+}

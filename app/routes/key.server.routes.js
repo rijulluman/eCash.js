@@ -11,8 +11,5 @@ var key = require('app/controllers/key.server.controller');
 module.exports = function (app) {
 
 	// Setting up the listings api
-    app.route('/api/key/create').post(key.create);
-
-    // Finish by binding the Listing middleware
-    app.param('transactionId', transaction.transactionByID);
+    app.route('/api/key/generate').get(key.generate);
 };
