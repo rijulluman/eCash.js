@@ -21,6 +21,27 @@ exports.read = function(req, res) {
 };
 
 /**
+ * UserId Bind middleware
+ */
+exports.bindUserId = function(req, res, next, id) {
+  req.userId = id;
+  next();
+};
+
+
+/**
+ * Fetch Users Balance Amount
+ */
+exports.getUserBalance = function(req, res, next){
+    if(!CommonFunctions.validatePublicKeyHexString(req.userId)){
+        return ErrorCodeHandler.getErrorJSONData({'code':20, 'res':res});
+    }
+    calculateAccountBalance(req.userId, function(err, balance){
+        res.jsonp({balanceAmount : balance});
+    });
+};
+
+/**
  * Create a Block
  */
 exports.create = function(req, res) {
@@ -62,9 +83,14 @@ exports.create = function(req, res) {
 
             function getTransactionArray(cb){
                 makeTransactionArray(Constants.BLOCK_MAX_TRANSACTIONS_COUNT, function(err, ids, transactions){
+                    if(transactions.length == 0){
+                        console.log("No Unconfirmed Transactions found to create Block !")
+                        return;             // TODO : Handle Properly
+                    }
                     block.transactions = transactions;
                     block.transactionCount = transactions.length;
                     zaddClear = ids;        // Transaction ids to remove after creation of block
+
                     cb(err);
                 });
             },
@@ -85,11 +111,12 @@ exports.create = function(req, res) {
             },
 
             function getPreviousBlock(cb){
-                // TODO : Read from Mongo
-                BlockCollection.find({}).;
-                block.blockNumber = 0;
-                block.previousBlockHash = Constants.GENESIS_BLOCK_PREV_HASH;
-                cb();
+                BlockCollection.find({}, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).limit(1).toArray(function(errs, docs){
+                    var previousBlock = docs[0];
+                    block.blockNumber = previousBlock.blockNumber + 1;
+                    block.previousBlockHash = previousBlock.blockHash;
+                    cb();    
+                });
             },
 
             function generateHashesAndSignatures(cb){
@@ -102,13 +129,16 @@ exports.create = function(req, res) {
             },
 
             function validateGeneratedBlock(cb){
-                if(validateBlock(block)){
+                validateAndParseBlock(block, function(isValid, parsedBlock){
+                    if(isValid){
+                        block = parsedBlock;        // Not necessary when creating a block ourselves
+                    }
+                    else{
+                        console.log("Invalid Block Generated !!", JSON.stringify(block, null, 2));
+                        return;             // TODO : Handle Properly
+                    }
                     cb();
-                }
-                else{
-                    console.log("Invalid Block");
-                    return;             // TODO : Handle Properly
-                }
+                });
             },
 
             function addBlockToDb(cb){
@@ -116,7 +146,6 @@ exports.create = function(req, res) {
                     if(err){
                         console.log("Insert Mongo Error", err);
                     }
-                    cb();
                 });
                 cb();
             },
@@ -127,14 +156,13 @@ exports.create = function(req, res) {
             },
 
             function removeTransactionsFromMemory(cb){
-                // TODO : remove zadd entries and 
                 RedisHandler.removeTransactionsFromZlist(zaddClear);
                 RedisHandler.removeUnconfirmedTransactions(block.transactions);
                 cb();
             }
 
         ], function(errs, result){
-            res.jsonp(block);   // TODO : Remove for cron script
+            res.jsonp(block);   // TODO : Remove / Replace cron script
         });
 };
 
@@ -144,26 +172,146 @@ var makeTransactionArray = function(count, callback){
             return callback(null, [], []);
         }
         RedisHandler.getTransactionArray(ids, function(err, txArr){
-            // TODO : Validate Balance amounts for Transactions Here
-            // Also consider fee amounts in calculations
+            var validTxArr = txArr;
+            // validateAccountBalances(txArr, function(err, validTxArr, invalidTxArr){
+                // TODO : Validate Balance amounts for Transactions Here
+                // Also consider fee amounts in calculations
 
-            if(txArr.length < count && ids.length == count){
+                if(validTxArr.length < count && ids.length == count){
 
-                makeTransactionArray(count - txArr.length, function(err, recId, recArr){
-                    callback(null, ids.concat(recId), txArr.concat(recArr));
-                });
-                
-            }
-            else{
-                callback(null, ids, txArr);
-            }
-        });
+                    makeTransactionArray(count - validTxArr.length, function(err, recId, recArr){
+                        callback(null, ids.concat(recId), validTxArr.concat(recArr));
+                    });
+                    
+                }
+                else{
+                    callback(null, ids, validTxArr);
+                }
+            });
+        // });
     });
 };
 
-var validateBlock = function(block){
-    // TODO
-    return true;
+var calculateAccountBalance = function(userId, callback){
+    var userBalance = 0;
+    // BlockCollection.agg
+};
+
+var validateAccountBalances = function(transactions, callback){
+    var validTx = [];
+    var invalidTx = [];
+
+    async.each(transactions, function(transaction){
+        BlockCollection.find(
+            {
+                $or : [ {
+                   "transactions.sender" : transaction.sender 
+                },
+                {
+                   "transactions.receiver" : transaction.sender 
+                },
+                {
+                    "blockCreatorId" : transaction.sender
+                }] 
+            }, {_id : 0}).toArray(function(err, docs){
+                console.log("Docs", docs);
+            });
+    });
+
+};
+
+var validateAndParseBlock = function(block, callback){
+    block.blockNumber = parseInt(block.blockNumber);
+    block.nonce = parseInt(block.nonce);
+    block.transactionCount = parseInt(block.transactionCount);
+    block.transactionHash = block.transactionHash.toLowerCase();
+    block.transactionSignature = block.transactionSignature.toLowerCase();
+    block.blockHash = block.blockHash.toLowerCase();
+    block.blockSignature = block.blockSignature.toLowerCase();
+    block.blockCreatorId = block.blockCreatorId.toLowerCase();
+    block.totalFees = Number(block.totalFees);
+    block.totalAmount = Number(block.totalAmount);
+
+    block.previousBlockHash = block.previousBlockHash.toLowerCase();
+
+    if(
+            block.blockNumber < 0
+        ||  block.nonce < Constants.MINIMUM_BLOCK_NONCE
+        ||  block.transactions.length > Constants.BLOCK_MAX_TRANSACTIONS_COUNT
+        ||  block.transactionCount != block.transactions.length
+        ||  block.transactions.length == 0
+    ){
+        return callback(false, null);
+    }
+
+    var totalFees = 0;
+    var totalAmount = 0;
+
+    for(var i = 0; i < block.transactions.length; i++){
+
+        block.transactions[i].fees  = Number(block.transactions[i].fees);
+        block.transactions[i].amount = Number(block.transactions[i].amount);
+        block.transactions[i].nonce = parseInt(block.transactions[i].nonce);
+
+        if(
+                !block.transactions[i].sender
+            ||  !CommonFunctions.validatePublicKeyHexString(block.transactions[i].sender)
+            ||  !block.transactions[i].receiver
+            ||  !CommonFunctions.validatePublicKeyHexString(block.transactions[i].receiver)
+            ||  block.transactions[i].nonce < Constants.MINIMUM_TRANSACTION_NONCE
+            
+        ){
+            return callback(false, null);
+        }
+
+        block.transactions[i].sender    = block.transactions[i].sender.toLowerCase();
+        block.transactions[i].receiver  = block.transactions[i].receiver.toLowerCase();
+        block.transactions[i].txId      = block.transactions[i].txId.toLowerCase();
+        block.transactions[i].signature = block.transactions[i].signature.toLowerCase();
+
+        // Hashing is case-sensitive
+        if(
+                block.transactions[i].txId != CommonFunctions.generateTransactionHash(block.transactions[i])
+            ||  !CommonFunctions.verifySignature(block.transactions[i].txId, block.transactions[i].sender, block.transactions[i].signature)
+        ){
+            return callback(false, null);
+        }
+
+        totalFees   += block.transactions[i].fees   * 10000000;
+        totalAmount += block.transactions[i].amount * 10000000;
+
+    }
+
+    totalFees   = totalFees     / 10000000;
+    totalAmount = totalAmount   / 10000000;
+
+    if(
+            totalFees   != block.totalFees
+        ||  totalAmount != block.totalAmount
+    ){
+        return callback(false, null);
+    }
+
+    if(
+            block.transactionHash != CommonFunctions.generateTransactionArrayHash(block.transactions)
+        ||  !CommonFunctions.verifySignature(block.transactionHash, block.blockCreatorId, block.transactionSignature)
+        ||  block.blockHash != CommonFunctions.generateBlockHash(block)
+        ||  !CommonFunctions.verifySignature(block.blockHash, block.blockCreatorId, block.blockSignature)
+    ){
+        return callback(false, null);
+    }
+
+    if(block.blockNumber == 0 && block.previousBlockHash == Constants.GENESIS_BLOCK_PREV_HASH){
+        return callback(true, block);
+    }
+
+    BlockCollection.find({ blockNumber : block.blockNumber - 1 }, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).limit(1).toArray(function(errs, docs){
+        var previousBlock = docs[0];
+        if(previousBlock.blockHash == block.previousBlockHash){
+            return callback(true, block);
+        }
+        callback(false, null);
+    });
 };
 
 var broadcastBlock = function(block){

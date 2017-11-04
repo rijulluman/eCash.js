@@ -27,6 +27,9 @@ var ERROR_CODES  =   new Array();
 /* TRANSACTION    */ ERROR_CODES[16]   =  'Sender and Receiver cannot be the same';
 
 
+/* BLOCK          */ ERROR_CODES[20]   =  'Invalid userId';
+
+
 
 // @Response Handler
 var ErrorCodeHandler = {

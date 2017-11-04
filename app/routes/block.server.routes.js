@@ -16,6 +16,9 @@ module.exports = function (app) {
 
     app.route('/api/block/create/new').post(block.create); 		// For Testing only
 
+    app.route('/api/balance/:userId').get(block.getUserBalance);
+
     // Finish by binding the id middleware
     app.param('blockId', block.blockByID);
+    app.param('userId', block.bindUserId);
 };
