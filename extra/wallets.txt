@@ -40,7 +40,25 @@ WALLET 7 :
     "publicKey": "039e86e252e53ae10c9345af211916cb6e0a358a839872d6c08d5df8ad678ce478"
 }
 
-GENESIS MINER:
+WALLET 8 : 
+{
+    "privateKey": "a591bf32855d5ad422513ed804c9e1179fbc9e18762ed60f62fdf2f0501494dc",
+    "publicKey": "0248cfa01d20f2bc32c1ea7e53de057eaa787d40269ce4cd71835015473451c34a"
+}
+
+WALLET 9 :
+{
+    "privateKey": "e8683385f27d500b784d6c9bf8c2dd8329498c08df65ba592b2afb50be6541a8",
+    "publicKey": "0273f3b15766c676ae6e713295855b1ed3ec81658054a6435ee4a2320d95bb3992"
+}
+
+WALLET 10 : 
+{
+    "privateKey": "143acc309f8c91803c80ae23e3fea28f884c173023a830da4d571aa6e8164656",
+    "publicKey": "03ceca1901182489e7a5c34d723cd955b8cebad8dbfcb5b78980c5c6887b3850b8"
+}
+
+GENESIS MINER & PROVIDER (negative balance):
 {
     "privateKey": "fcbd864a695f0fef7162af1ff80641d351fc31e2ff35347488d83d1f386376e5",
     "publicKey": "036efa45411e658bcafd151abe923334568ddd734e43e6432de38dac5a622c7756"

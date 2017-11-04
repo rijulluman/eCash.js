@@ -97,16 +97,17 @@ exports.create = function(req, res) {
 
             function calculateTotalCoins(cb){
                 block.transactions.forEach(function(transaction){
-                    block.totalFees += transaction.fees * 10000000;
-                    block.totalAmount += transaction.amount * 10000000;
+                    block.totalFees += transaction.fees * Constants.SUM_DECIMAL_CORRECTION;
+                    block.totalAmount += transaction.amount * Constants.SUM_DECIMAL_CORRECTION;
                 });
-                block.totalFees = block.totalFees / 10000000;
-                block.totalAmount = block.totalAmount / 10000000;
+                block.totalFees = block.totalFees / Constants.SUM_DECIMAL_CORRECTION;
+                block.totalAmount = block.totalAmount / Constants.SUM_DECIMAL_CORRECTION;
                 cb();
             },
 
             function updateBlockChain(cb){
                 // TODO : Call Blockchain update here
+                // Also delete unconfirmed transactions present in block from memory
                 cb();
             },
 
@@ -158,6 +159,7 @@ exports.create = function(req, res) {
             function removeTransactionsFromMemory(cb){
                 RedisHandler.removeTransactionsFromZlist(zaddClear);
                 RedisHandler.removeUnconfirmedTransactions(block.transactions);
+                RedisHandler.clearCurrentBlock();
                 cb();
             }
 
@@ -166,58 +168,155 @@ exports.create = function(req, res) {
         });
 };
 
+var calculateAccountBalance = function(userId, callback){
+    var userBalance = 0;
+    async.parallel([
+
+            function sentCoins(cb){
+                BlockCollection.aggregate([
+                        {                                               // This match will reduce the number of unwind operations
+                            $match : {
+                               "transactions.sender" : userId 
+                            }
+                        },
+                        {
+                            $unwind : "$transactions"
+                        },
+                        { 
+                            $match : {
+                               "transactions.sender" : userId 
+                            }
+                        },
+                        {
+                            $group : {
+                                _id : "$transactions.sender",
+                                amount : { $sum : { $multiply: [ "$transactions.amount", Constants.SUM_DECIMAL_CORRECTION ] } },
+                                fees   : { $sum : { $multiply: [ "$transactions.fees", Constants.SUM_DECIMAL_CORRECTION ] } }
+                            }
+                        }
+
+                    ], function(err, docs){
+                        cb(err, docs[0] ? (docs[0].amount + docs[0].fees) / Constants.SUM_DECIMAL_CORRECTION : 0);
+                }); 
+            },
+
+            function receivedCoins(cb){
+                BlockCollection.aggregate([
+                        {                                               // This match will reduce the number of unwind operations
+                            $match : {
+                               "transactions.receiver" : userId 
+                            }
+                        },
+                        {
+                            $unwind : "$transactions"
+                        },
+                        { 
+                            $match : {
+                               "transactions.receiver" : userId 
+                            }
+                        },
+                        {
+                            $group : {
+                                _id : "$transactions.receiver",
+                                amount : { $sum : { $multiply: [ "$transactions.amount", Constants.SUM_DECIMAL_CORRECTION ] } }
+                            }
+                        }
+
+                    ], function(err, docs){
+                        cb(err, docs[0] ? (docs[0].amount) / Constants.SUM_DECIMAL_CORRECTION : 0);
+                }); 
+            },
+
+            function earnedFees(cb){
+                BlockCollection.aggregate([
+                        {                                               // This match will reduce the number of unwind operations
+                            $match : {
+                               "blockCreatorId" : userId 
+                            }
+                        },
+                        {
+                            $group : {
+                                _id : "$blockCreatorId",
+                                amount : { $sum : { $multiply: [ "$totalFees", Constants.SUM_DECIMAL_CORRECTION ] } }
+                            }
+                        }
+
+                    ], function(err, docs){
+                        cb(err, docs[0] ? (docs[0].amount) / Constants.SUM_DECIMAL_CORRECTION : 0);
+                }); 
+            },
+
+        ], function(errs, amounts){
+            callback(null, amounts[1] + amounts[2] - amounts[0]);       // received + fees earned - sent
+    });
+        
+};
+
 var makeTransactionArray = function(count, callback){
     RedisHandler.getMaxFeeTransactionIds(count, function(err, ids){
         if(ids.length == 0){
             return callback(null, [], []);
         }
         RedisHandler.getTransactionArray(ids, function(err, txArr){
-            var validTxArr = txArr;
-            // validateAccountBalances(txArr, function(err, validTxArr, invalidTxArr){
-                // TODO : Validate Balance amounts for Transactions Here
-                // Also consider fee amounts in calculations
+            validateAccountBalances(txArr, function(err, validTxArr, invalidTxArr){
 
-                if(validTxArr.length < count && ids.length == count){
-
-                    makeTransactionArray(count - validTxArr.length, function(err, recId, recArr){
-                        callback(null, ids.concat(recId), validTxArr.concat(recArr));
-                    });
-                    
-                }
-                else{
-                    callback(null, ids, validTxArr);
-                }
+                invalidTxArr.forEach(function(tx){      // Remove ids to avoid removing them from Redis later
+                    ids.splice(ids.indexOf(tx.txId), 1);
+                });
+                removeTransactionsAlreadyInBlockChain(validTxArr, function(err, finalTxArr){
+                    if(finalTxArr.length < count && ids.length == count){
+                        makeTransactionArray(count - finalTxArr.length, function(err, recId, recArr){
+                            callback(null, ids.concat(recId), finalTxArr.concat(recArr));
+                        });
+                    }
+                    else{
+                        callback(null, ids, finalTxArr);
+                    }
+                });
             });
-        // });
+        });
     });
-};
-
-var calculateAccountBalance = function(userId, callback){
-    var userBalance = 0;
-    // BlockCollection.agg
 };
 
 var validateAccountBalances = function(transactions, callback){
     var validTx = [];
     var invalidTx = [];
 
-    async.each(transactions, function(transaction){
-        BlockCollection.find(
-            {
-                $or : [ {
-                   "transactions.sender" : transaction.sender 
-                },
-                {
-                   "transactions.receiver" : transaction.sender 
-                },
-                {
-                    "blockCreatorId" : transaction.sender
-                }] 
-            }, {_id : 0}).toArray(function(err, docs){
-                console.log("Docs", docs);
-            });
+    async.each(transactions, function(transaction, cb){
+
+        calculateAccountBalance(transaction.sender, function(err, balance){
+            if(balance < (transaction.amount + transaction.fees)){
+                invalidTx.push(transaction);
+            }
+            else{
+                validTx.push(transaction);
+            }
+            cb();
+        });
+    
+
+    }, function(errs, results){
+        callback(null, validTx, invalidTx);
     });
 
+};
+
+var removeTransactionsAlreadyInBlockChain = function(transactions, callback){
+    var validTransactions = [];
+    async.each(transactions, function(transaction, cb){
+        BlockCollection.find({"transactions.txId" : transaction.txId}, {_id : 1}).limit(1).toArray(function(err, docs){
+            if(docs && docs.length){
+                RedisHandler.removeTransactionsFromZlist([transaction.txId]);
+                RedisHandler.removeUnconfirmedTransactions([transaction]);
+            }
+            else{
+                validTransactions.push(transaction);
+            }
+            cb();
+        });
+    }, function(errs, result){
+        callback(null, validTransactions);
+    });
 };
 
 var validateAndParseBlock = function(block, callback){
@@ -277,13 +376,13 @@ var validateAndParseBlock = function(block, callback){
             return callback(false, null);
         }
 
-        totalFees   += block.transactions[i].fees   * 10000000;
-        totalAmount += block.transactions[i].amount * 10000000;
+        totalFees   += block.transactions[i].fees   * Constants.SUM_DECIMAL_CORRECTION;
+        totalAmount += block.transactions[i].amount * Constants.SUM_DECIMAL_CORRECTION;
 
     }
 
-    totalFees   = totalFees     / 10000000;
-    totalAmount = totalAmount   / 10000000;
+    totalFees   = totalFees     / Constants.SUM_DECIMAL_CORRECTION;
+    totalAmount = totalAmount   / Constants.SUM_DECIMAL_CORRECTION;
 
     if(
             totalFees   != block.totalFees
@@ -305,7 +404,7 @@ var validateAndParseBlock = function(block, callback){
         return callback(true, block);
     }
 
-    BlockCollection.find({ blockNumber : block.blockNumber - 1 }, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).limit(1).toArray(function(errs, docs){
+    BlockCollection.find({ blockNumber : block.blockNumber - 1 }, {_id : 0, blockNumber : 1, blockHash : 1}).limit(1).toArray(function(errs, docs){
         var previousBlock = docs[0];
         if(previousBlock.blockHash == block.previousBlockHash){
             return callback(true, block);
