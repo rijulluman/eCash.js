@@ -24,6 +24,7 @@ var ERROR_CODES  =   new Array();
 /* TRANSACTION    */ ERROR_CODES[13]   =  'Invalid Nonce / Nonce too small';
 /* TRANSACTION    */ ERROR_CODES[14]   =  'Invalid txId (Transaction Hash does not match)';
 /* TRANSACTION    */ ERROR_CODES[15]   =  'Signature Mismatch / Unauthenticated Transaction';
+/* TRANSACTION    */ ERROR_CODES[16]   =  'Sender and Receiver cannot be the same';
 
 
 

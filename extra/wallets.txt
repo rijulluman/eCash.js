@@ -9,3 +9,39 @@ WALLET 2 :
     "privateKey": "418836c2f238940f9f62115800075b956ec0f167a60bce42663e9958f62eae7b",
     "publicKey": "027ce749cc99715d1dd0904c7ccf5e3a9988e57fbbecfe9b0d73f7fff32f3b12a6"
 }
+
+WALLET 3 :
+{
+    "privateKey": "b5abc8f9c1e65f948ad8f899b6a9b00437a25dc9c6081f5c3cc692756b9106b2",
+    "publicKey": "02a4cefec591a1ab07cb2f6e3640737a251104011cc823b121f23e93e600b50053"
+}
+
+WALLET 4 : 
+{
+    "privateKey": "b10253e3702bab93cc31fecad531a7ec64f8d5e1ad76808ad7e18cec721dfa5a",
+    "publicKey": "03912327450bdab11d0693cf930a80eb0a6ed4472a5c6d21608e08072202430eab"
+}
+
+WALLET 5 :
+{
+    "privateKey": "34fde44b02c0361661ec5c3977c4d659242fcbc7519d529c8822ea6f5889abd2",
+    "publicKey": "035a30203ad6e727794f2e2748668831359e0957fd343940ddf0d1c44057821171"
+}
+
+WALLET 6 : 
+{
+    "privateKey": "e483240499f8e383ee65384f0efe67e2c8df04b4078abf0066ec49d6e6339ac8",
+    "publicKey": "0398fa2715bd250c27482ce925e850dd2b3609f7e09d61bed6a00c8a479411f34b"
+}
+
+WALLET 7 :
+{
+    "privateKey": "8dffd3c7db4ba31c969005c6d60767ac92a6b180957fbb5f759a6c83e359377e",
+    "publicKey": "039e86e252e53ae10c9345af211916cb6e0a358a839872d6c08d5df8ad678ce478"
+}
+
+GENESIS MINER:
+{
+    "privateKey": "fcbd864a695f0fef7162af1ff80641d351fc31e2ff35347488d83d1f386376e5",
+    "publicKey": "036efa45411e658bcafd151abe923334568ddd734e43e6432de38dac5a622c7756"
+}

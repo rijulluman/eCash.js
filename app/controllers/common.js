@@ -6,7 +6,7 @@ var secp256k1 = require('secp256k1/elliptic');
 var hexadecimal   =   /^[0-9A-F]+$/i;
 
 var CommonFunctions = {
-  // @Get unique Id for optionId, LD, RA, etc.
+
   generateTransactionNonce : function(callback){
     crypto.randomBytes(3, function (err, nonceHex) {
       if(err){
@@ -19,6 +19,23 @@ var CommonFunctions = {
         }
         else{
           CommonFunctions.generateTransactionNonce(callback);
+        }
+      }
+    });
+  },
+
+  generateBlockNonce : function(callback){
+    crypto.randomBytes(5, function (err, nonceHex) {
+      if(err){
+        callback(err); 
+      }
+      else{
+        var nonce = parseInt(nonceHex.toString('hex'), 16);
+        if(nonce > Constants.MINIMUM_BLOCK_NONCE){
+          callback(null, nonce);
+        }
+        else{
+          CommonFunctions.generateBlockNonce(callback);
         }
       }
     });
@@ -59,12 +76,53 @@ var CommonFunctions = {
     return hash.digest('hex');
   },
 
-  generateSignature : function(txId, privateKey){
-    return CommonFunctions.bufferToHexString(secp256k1.sign(CommonFunctions.hexStringToBuffer(txId), privateKey).signature);
+  generateTransactionArrayHash : function(transactions){
+    var hash = crypto.createHash('sha256');
+    transactions.forEach(function(transaction){
+      hash.update(transaction.txId );
+      hash.update("" + transaction.nonce );
+      hash.update(transaction.sender );
+      hash.update(transaction.receiver );
+      hash.update("" + transaction.amount );
+      hash.update("" + transaction.fees );
+      hash.update("" + transaction.deadline );
+      hash.update("" + transaction.signature );
+    });
+    return hash.digest('hex');        // TODO : Test for max number of transactions
   },
 
-  verifySignature : function(txId, publicKey, signature){
-    return secp256k1.verify(CommonFunctions.hexStringToBuffer(txId), CommonFunctions.hexStringToBuffer(signature), CommonFunctions.hexStringToBuffer(publicKey));
+  generateBlockHash : function(block){
+    var hash = crypto.createHash('sha256');
+
+    hash.update(""+block.blockNumber);
+    hash.update(""+block.nonce );
+    hash.update(block.blockCreatorId );
+    hash.update(block.previousBlockHash );
+    hash.update(""+block.totalAmount );
+    hash.update(""+block.totalFees );
+    block.transactions.forEach(function(transaction){
+      hash.update(transaction.txId );
+      hash.update("" + transaction.nonce );
+      hash.update(transaction.sender );
+      hash.update(transaction.receiver );
+      hash.update("" + transaction.amount );
+      hash.update("" + transaction.fees );
+      hash.update("" + transaction.deadline );
+      hash.update("" + transaction.signature );
+    });
+    hash.update(""+block.transactionCount );
+    hash.update(block.transactionHash );
+    hash.update(block.transactionSignature);
+
+    return hash.digest('hex');        // TODO : Test for max number of transactions
+  },
+
+  generateSignature : function(sha256Hash, privateKey){
+    return CommonFunctions.bufferToHexString(secp256k1.sign(CommonFunctions.hexStringToBuffer(sha256Hash), privateKey).signature);
+  },
+
+  verifySignature : function(sha256Hash, publicKey, signature){
+    return secp256k1.verify(CommonFunctions.hexStringToBuffer(sha256Hash), CommonFunctions.hexStringToBuffer(signature), CommonFunctions.hexStringToBuffer(publicKey));
   },
 
 }

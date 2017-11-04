@@ -39,7 +39,7 @@ var RedisHandler = {
   				});
   			},
   			function sortTransactionByFee(cb){
-  				RedisStoreMA.zadd([redisPath.sortedUnconfirmedTransaction, transaction.fees * 10000, transaction.txId], function(err, reply){ 		// * 10000 to aoide approximation by Redis
+  				RedisStoreMA.zadd([redisPath.sortedUnconfirmedTransaction, transaction.fees * 10000000, transaction.txId], function(err, reply){ 		// * 10000000 to avoid approximation by Redis
   					cb(err);
   				});
   			},
@@ -64,6 +64,60 @@ var RedisHandler = {
   		}
   	});
   },
+
+  getMaxFeeTransactionIds : function(count, callback){
+  	RedisStoreSL.zrevrange([redisPath.sortedUnconfirmedTransaction, 0, count-1], function(err, reply){
+  		callback(err, reply ? reply : []);
+  	});
+  },
+
+  getTransactionArray : function(ids, callback){
+  	var transactions = [];
+  	var expiredIds = [];
+  	async.each(ids, function(txId, cb){ // Use eachSeries for ordered list
+  		RedisHandler.getUnconfirmedTransactionById(txId, function(err, reply){
+  			if(!err && !reply){
+  				expiredIds.push(txId);
+  			}
+  			else if(!err){
+  				transactions.push(reply);
+  			}
+  			cb();
+  		});
+  	}, 
+
+  	function(errs){
+  		callback(null, transactions);
+  		if(!errs && expiredIds.length > 0){
+  			RedisHandler.removeTransactionsFromZlist(expiredIds);
+  		}
+  	});
+  },
+
+  removeTransactionsFromZlist : function(ids){
+  	async.each(ids, function(txId, cb){
+  		RedisStoreMA.zrem([redisPath.sortedUnconfirmedTransaction, txId], function(err, reply){
+  			// console.log("Removed from zlist : ", txId);
+  		});
+  	});
+  },
+
+  removeUnconfirmedTransaction : function(txId, callback){
+  	RedisStoreMA.del(redisPath.unconfirmedTransaction + txId, function(err, reply){
+  		// console.log("Deleted Unconfirmed Transaction : ", txId);
+  	});
+  },
+
+  removeUnconfirmedTransactions : function(transactions, callback){
+  	async.each(transactions, function(transaction, cb){
+  		RedisHandler.removeUnconfirmedTransaction(transaction.txId, cb);
+  	},
+
+  	function(errs, reply){
+  		callback();
+  	});
+  },
+
   
 //End of export   
 }

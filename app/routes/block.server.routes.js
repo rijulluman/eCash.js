@@ -14,7 +14,7 @@ module.exports = function (app) {
     app.route('/api/block/:blockId').post(block.read);
 
 
-    app.route('/api/block/create/new').get(block.create); 		// For Testing only
+    app.route('/api/block/create/new').post(block.create); 		// For Testing only
 
     // Finish by binding the id middleware
     app.param('blockId', block.blockByID);

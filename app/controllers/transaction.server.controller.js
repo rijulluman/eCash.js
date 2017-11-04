@@ -69,6 +69,9 @@ exports.validate = function (req, res, next) {
     if(!transaction.nonce || isNaN(parseInt(transaction.nonce)) || parseInt(transaction.nonce) < Constants.MINIMUM_TRANSACTION_NONCE){
         return ErrorCodeHandler.getErrorJSONData({'code':13, 'res':res});
     }
+    if(transaction.sender == transaction.receiver){
+        return ErrorCodeHandler.getErrorJSONData({'code':16, 'res':res});
+    }
     transaction.nonce = parseInt(transaction.nonce);
     if(CommonFunctions.generateTransactionHash(transaction) != transaction.txId){
         return ErrorCodeHandler.getErrorJSONData({'code':14, 'res':res});
@@ -113,6 +116,9 @@ exports.create = function (req, res, next) {
         return ErrorCodeHandler.getErrorJSONData({'code':9, 'res':res});
     }
     transaction.receiver = req.body.receiver.toLowerCase();
+    if(transaction.sender == transaction.receiver){
+        return ErrorCodeHandler.getErrorJSONData({'code':16, 'res':res});
+    }
     if(!req.body.privateKey || !CommonFunctions.validatePrivateKeyHexString(req.body.privateKey)){
         return ErrorCodeHandler.getErrorJSONData({'code':10, 'res':res});
     }
