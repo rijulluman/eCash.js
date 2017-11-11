@@ -13,10 +13,9 @@ var RedisHandler = {
                 callback(err);  
             }
             else if(reply == null){
-                BlockCollection.find({}, {_id : 0, blockNumber : 1}).sort({"blockNumber" : -1}).limit(1).toArray(function(errs, docs){
-                    var previousBlock = docs[0] ? docs[0] : {blockNumber : 0};
-                    RedisStoreMA.setex(redisPath.currentBlock, Constants.CURRENT_BLOCK_REDIS_TTL, previousBlock.blockNumber, function(err, reply){
-                        callback(null, previousBlock.blockNumber);
+                MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
+                    RedisStoreMA.setex(redisPath.currentBlock, Constants.CURRENT_BLOCK_REDIS_TTL, blockNumber, function(err, reply){
+                        callback(null, blockNumber);
                     });   
                 });
             }

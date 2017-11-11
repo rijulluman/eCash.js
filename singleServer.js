@@ -95,6 +95,7 @@ global.ObjectId         =   require('mongodb').ObjectID;
 global.mongoConnection        =   null;
 global.TransactionCollection  =   null;
 global.BlockCollection        =   null;
+global.BalanceCollection      =   null;
 
 MongoClient.connect(MONGO_URL, function(err, db) {  
   // on error

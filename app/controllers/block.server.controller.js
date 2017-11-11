@@ -36,7 +36,7 @@ exports.getUserBalance = function(req, res, next){
     if(!CommonFunctions.validatePublicKeyHexString(req.userId)){
         return ErrorCodeHandler.getErrorJSONData({'code':20, 'res':res});
     }
-    calculateAccountBalance(req.userId, function(err, balance){
+    MongoHandler.calculateAccountBalance(req.userId, function(err, balance){
         res.jsonp({balanceAmount : balance});
     });
 };
@@ -168,90 +168,6 @@ exports.create = function(req, res) {
         });
 };
 
-var calculateAccountBalance = function(userId, callback){
-    var userBalance = 0;
-    async.parallel([
-
-            function sentCoins(cb){
-                BlockCollection.aggregate([
-                        {                                               // This match will reduce the number of unwind operations
-                            $match : {
-                               "transactions.sender" : userId 
-                            }
-                        },
-                        {
-                            $unwind : "$transactions"
-                        },
-                        { 
-                            $match : {
-                               "transactions.sender" : userId 
-                            }
-                        },
-                        {
-                            $group : {
-                                _id : "$transactions.sender",
-                                amount : { $sum : { $multiply: [ "$transactions.amount", Constants.SUM_DECIMAL_CORRECTION ] } },
-                                fees   : { $sum : { $multiply: [ "$transactions.fees", Constants.SUM_DECIMAL_CORRECTION ] } }
-                            }
-                        }
-
-                    ], function(err, docs){
-                        cb(err, docs[0] ? (docs[0].amount + docs[0].fees) / Constants.SUM_DECIMAL_CORRECTION : 0);
-                }); 
-            },
-
-            function receivedCoins(cb){
-                BlockCollection.aggregate([
-                        {                                               // This match will reduce the number of unwind operations
-                            $match : {
-                               "transactions.receiver" : userId 
-                            }
-                        },
-                        {
-                            $unwind : "$transactions"
-                        },
-                        { 
-                            $match : {
-                               "transactions.receiver" : userId 
-                            }
-                        },
-                        {
-                            $group : {
-                                _id : "$transactions.receiver",
-                                amount : { $sum : { $multiply: [ "$transactions.amount", Constants.SUM_DECIMAL_CORRECTION ] } }
-                            }
-                        }
-
-                    ], function(err, docs){
-                        cb(err, docs[0] ? (docs[0].amount) / Constants.SUM_DECIMAL_CORRECTION : 0);
-                }); 
-            },
-
-            function earnedFees(cb){
-                BlockCollection.aggregate([
-                        {                                               // This match will reduce the number of unwind operations
-                            $match : {
-                               "blockCreatorId" : userId 
-                            }
-                        },
-                        {
-                            $group : {
-                                _id : "$blockCreatorId",
-                                amount : { $sum : { $multiply: [ "$totalFees", Constants.SUM_DECIMAL_CORRECTION ] } }
-                            }
-                        }
-
-                    ], function(err, docs){
-                        cb(err, docs[0] ? (docs[0].amount) / Constants.SUM_DECIMAL_CORRECTION : 0);
-                }); 
-            },
-
-        ], function(errs, amounts){
-            callback(null, amounts[1] + amounts[2] - amounts[0]);       // received + fees earned - sent
-    });
-        
-};
-
 var makeTransactionArray = function(count, callback){
     RedisHandler.getMaxFeeTransactionIds(count, function(err, ids){
         if(ids.length == 0){
@@ -284,7 +200,7 @@ var validateAccountBalances = function(transactions, callback){
 
     async.each(transactions, function(transaction, cb){
 
-        calculateAccountBalance(transaction.sender, function(err, balance){
+        MongoHandler.calculateAccountBalance(transaction.sender, function(err, balance){
             if(balance < (transaction.amount + transaction.fees)){
                 invalidTx.push(transaction);
             }
