@@ -1,6 +1,6 @@
 // @RedisHandler
 // Author: Rijul Luman
-// To read data from Redis in the desired format. 
+// To read/write data to/from Redis in the desired format. 
 
 var async = require("async");
 var redisPath = Constants.redisPath;

@@ -22,6 +22,7 @@ const PORT                  =   config.express_port;
 const MONGO_URL             = config.mongo_url;
 const MONGO_COLL_TRANSACTION= config.mongo_coll_transaction;
 const MONGO_COLL_BLOCK      = config.mongo_coll_block;
+const MONGO_COLL_BALANCE    = config.mongo_coll_balance;
 
 // redis config
 const REDIS_MA_HOST        =   config.redis.MA.host;
@@ -111,6 +112,7 @@ MongoClient.connect(MONGO_URL, function(err, db) {
   // set collection
   TransactionCollection    = mongoConnection.collection(MONGO_COLL_TRANSACTION);
   BlockCollection          = mongoConnection.collection(MONGO_COLL_BLOCK);
+  BalanceCollection        = mongoConnection.collection(MONGO_COLL_BALANCE);
 
   // mongo db started
   console.log('Mongo DB Started');
@@ -126,6 +128,9 @@ global.CommonFunctions    =   require('app/controllers/common');
 global.ErrorCodeHandler   =   require('app/handler/errorCode');
 // Redis Handler
 global.RedisHandler       =   require('app/handler/redis');
+// Mongo Handler
+global.MongoHandler       =   require('app/handler/mongo');
+
 
 // Add Routes
 // For APIs

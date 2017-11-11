@@ -1,5 +1,8 @@
 {
   "mongo_url":"mongodb://userName:password@domain.com:27017,subdomain.domain.com:27017?authSource=admin",
+  "mongo_coll_transaction" : "transactions",
+  "mongo_coll_block"    : "blocks",
+  "mongo_coll_balance"  : "balance", 
 
   "redis" : {
     "sessionStore" : {
