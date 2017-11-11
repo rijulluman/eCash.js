@@ -12,6 +12,56 @@ var MongoHandler = {
         });
     },
 
+    setAllBlockTargets : function(callback){
+        MongoHandler.getCurrentBlockNumber(function(err, currentBlockNumber){
+            TargetCollection.find({}).toArray(function(err, docs){
+                var targetExist = [];
+                var addTarget = [];
+                if(err){
+                    console.log("MongoErr: ", err);
+                }
+                docs.forEach(function(doc){
+                    targetExist.push(doc.blockNumber);
+                });
+                for(var i = 0; i < currentBlockNumber+1; i = i + Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS){         // +1 to precalculate incase next block needs new target
+                    if(targetExist.indexOf(i) == -1){
+                        addTarget.push(i);                        
+                    }
+                }
+
+                async.each(addTarget, function(blockNumber, cb){
+                    var target = {
+                        blockNumber : blockNumber        
+                    };
+                    if(blockNumber == 0){
+                        target.target = Constants.GENESIS_BLOCK_TARGET;
+                        TargetCollection.insert(target, function(err, result){
+                            cb();
+                        });
+                    }
+                    else{
+                        // TODO : Calculate Target Here
+                        console.log("TODO : Calculate Target");
+                    }
+                }, function(errs, results){
+                    callback();
+                });
+            });
+        });
+    },
+
+    getTargetForBlock : function(blockNumber, callback){
+        MongoHandler.setAllBlockTargets(function(){
+            var targetBlockNumber = blockNumber - (blockNumber % Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS);
+            TargetCollection.find({blockNumber : targetBlockNumber}).toArray(function(err, docs){
+                if(err){
+                    console.log("MongoDB error: ", err);
+                }
+                callback(null, docs[0].target);
+            });
+        });
+    },
+
     setAllBlockBalances : function (callback){
         BalanceCollection.find({}, {blockNumber : 1}).toArray(function(err, docs){
             if(err){

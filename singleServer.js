@@ -23,6 +23,7 @@ const MONGO_URL             = config.mongo_url;
 const MONGO_COLL_TRANSACTION= config.mongo_coll_transaction;
 const MONGO_COLL_BLOCK      = config.mongo_coll_block;
 const MONGO_COLL_BALANCE    = config.mongo_coll_balance;
+const MONGO_COLL_TARGET     = config.mongo_coll_target;
 
 // redis config
 const REDIS_MA_HOST        =   config.redis.MA.host;
@@ -96,6 +97,7 @@ global.mongoConnection        =   null;
 global.TransactionCollection  =   null;
 global.BlockCollection        =   null;
 global.BalanceCollection      =   null;
+global.TargetCollection       =   null;
 
 MongoClient.connect(MONGO_URL, function(err, db) {  
   // on error
@@ -114,6 +116,7 @@ MongoClient.connect(MONGO_URL, function(err, db) {
   TransactionCollection    = mongoConnection.collection(MONGO_COLL_TRANSACTION);
   BlockCollection          = mongoConnection.collection(MONGO_COLL_BLOCK);
   BalanceCollection        = mongoConnection.collection(MONGO_COLL_BALANCE);
+  TargetCollection         = mongoConnection.collection(MONGO_COLL_TARGET);
 
   // mongo db started
   console.log('Mongo DB Started');

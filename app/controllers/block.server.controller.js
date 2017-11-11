@@ -33,6 +33,7 @@ exports.bindUserId = function(req, res, next, id) {
  * Fetch Users Balance Amount
  */
 exports.getUserBalance = function(req, res, next){
+    MongoHandler.getTargetForBlock(0, function(){});
     if(!CommonFunctions.validatePublicKeyHexString(req.userId)){
         return ErrorCodeHandler.getErrorJSONData({'code':20, 'res':res});
     }
@@ -72,13 +73,6 @@ exports.create = function(req, res) {
 
                 block.blockCreatorId = user.publicKey;
                 cb();
-            },
-
-            function generateNonce(cb){
-                CommonFunctions.generateBlockNonce(function(err, nonce){
-                    block.nonce = nonce;
-                    cb(err);
-                });
             },
 
             function getTransactionArray(cb){
@@ -124,9 +118,14 @@ exports.create = function(req, res) {
                 block.transactionHash = CommonFunctions.generateTransactionArrayHash(block.transactions);
                 block.transactionSignature = CommonFunctions.generateSignature(block.transactionHash, user.privateKey);
                 
-                block.blockHash = CommonFunctions.generateBlockHash(block);
-                block.blockSignature = CommonFunctions.generateSignature(block.blockHash, user.privateKey);
-                cb();
+                MongoHandler.getTargetForBlock(block.blockNumber, function(err, target){
+                    var nonceAndHash = CommonFunctions.generateBlockHashAndNonce(target, block);
+                    block.nonce = nonceAndHash.nonce;
+                    block.blockHash = nonceAndHash.hash;
+                    block.blockSignature = CommonFunctions.generateSignature(block.blockHash, user.privateKey);
+                    cb();
+                });
+                
             },
 
             function validateGeneratedBlock(cb){
@@ -157,6 +156,7 @@ exports.create = function(req, res) {
             },
 
             function removeTransactionsFromMemory(cb){
+                // TODO : Remove only after block accepted/ also remove when new block added
                 RedisHandler.removeTransactionsFromZlist(zaddClear);
                 RedisHandler.removeUnconfirmedTransactions(block.transactions);
                 RedisHandler.clearCurrentBlock();
@@ -251,7 +251,6 @@ var validateAndParseBlock = function(block, callback){
 
     if(
             block.blockNumber < 0
-        ||  block.nonce < Constants.MINIMUM_BLOCK_NONCE
         ||  block.transactions.length > Constants.BLOCK_MAX_TRANSACTIONS_COUNT
         ||  block.transactionCount != block.transactions.length
         ||  block.transactions.length == 0

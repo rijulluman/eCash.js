@@ -24,22 +24,22 @@ var CommonFunctions = {
     });
   },
 
-  generateBlockNonce : function(callback){
-    crypto.randomBytes(5, function (err, nonceHex) {
-      if(err){
-        callback(err); 
-      }
-      else{
-        var nonce = parseInt(nonceHex.toString('hex'), 16);
-        if(nonce > Constants.MINIMUM_BLOCK_NONCE){
-          callback(null, nonce);
-        }
-        else{
-          CommonFunctions.generateBlockNonce(callback);
-        }
-      }
-    });
-  },
+  // generateBlockNonce : function(callback){
+  //   crypto.randomBytes(5, function (err, nonceHex) {
+  //     if(err){
+  //       callback(err); 
+  //     }
+  //     else{
+  //       var nonce = parseInt(nonceHex.toString('hex'), 16);
+  //       if(nonce > Constants.MINIMUM_BLOCK_NONCE){
+  //         callback(null, nonce);
+  //       }
+  //       else{
+  //         CommonFunctions.generateBlockNonce(callback);
+  //       }
+  //     }
+  //   });
+  // },
 
   bufferToHexString : function(privateKey){
     var privateHex = "";
@@ -89,6 +89,28 @@ var CommonFunctions = {
       hash.update("" + transaction.signature );
     });
     return hash.digest('hex');        // TODO : Test for max number of transactions
+  },
+
+  generateBlockHashAndNonce : function(target, block){
+    for(var i = 0; i < Number.MAX_SAFE_INTEGER; i++){
+      block.nonce = i;
+      var hash = CommonFunctions.generateBlockHash(block);
+      if(CommonFunctions.validateBlockHash(hash, target)){
+        return { hash : hash, nonce: block.nonce } ;
+      }
+    }
+  },
+
+  validateBlockHash : function(hash, target){
+    var initialZeros = 2 * parseInt(target.substring(0,2), 16);
+    var targetNum = parseInt(target.substring(2), 16);
+    for(var i = 0; i < initialZeros; i++){
+      if(hash.charAt(i) != "0"){
+        return false;
+      }
+    }
+    var blockHashNum = parseInt(target.substring(initialZeros, initialZeros + 6), 16);
+    return (targetNum > blockHashNum);
   },
 
   generateBlockHash : function(block){

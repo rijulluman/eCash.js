@@ -3,6 +3,7 @@
   "mongo_coll_transaction" : "transactions",
   "mongo_coll_block"    : "blocks",
   "mongo_coll_balance"  : "balance", 
+  "mongo_coll_target"  : "target",
 
   "redis" :	{
     "sessionStore" : {
