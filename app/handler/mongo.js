@@ -23,25 +23,78 @@ var MongoHandler = {
                 docs.forEach(function(doc){
                     targetExist.push(doc.blockNumber);
                 });
-                for(var i = 0; i < currentBlockNumber+1; i = i + Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS){         // +1 to precalculate incase next block needs new target
+                for(var i = 0; i <= currentBlockNumber+1; i = i + Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS){         // +1 to precalculate incase next block needs new target
                     if(targetExist.indexOf(i) == -1){
                         addTarget.push(i);                        
                     }
                 }
 
-                async.each(addTarget, function(blockNumber, cb){
-                    var target = {
+                async.eachSeries(addTarget, function(blockNumber, cb){
+                    var targetObj = {
                         blockNumber : blockNumber        
                     };
                     if(blockNumber == 0){
-                        target.target = Constants.GENESIS_BLOCK_TARGET;
-                        TargetCollection.insert(target, function(err, result){
+                        targetObj.target = Constants.GENESIS_BLOCK_TARGET;
+                        TargetCollection.insert(targetObj, function(err, result){
                             cb();
                         });
                     }
                     else{
-                        // TODO : Calculate Target Here
-                        console.log("TODO : Calculate Target");
+                        BlockCollection.find({ $or : [ 
+                            { blockNumber : blockNumber - 1 },      // -1 since next block may not exist yet
+                            { blockNumber : blockNumber - Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS } 
+                        ] }, {blockNumber : 1, timestamp : 1}).sort({blockNumber : 1}).toArray(function(err, docs){
+                            if(!docs[0].timestamp || !docs[0].timestamp){     
+                                console.log("Missing Timestamp while calculating Target");      // TODO : Handle Properly
+                                cb();
+                            }
+                            var timeDifference = docs[1].timestamp - docs[0].timestamp;
+                            TargetCollection.find({blockNumber : blockNumber - Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS}).toArray(function(err, targetDocs){
+                                if(err){
+                                    return console.log("MongoDB error: ", err);
+                                }
+                                var prevTarget = targetDocs[0].target;
+                                var maxDifficulty = parseInt("ffffff", 16);
+
+
+                                var oldZeros   = parseInt(prevTarget.substring(0,2), 16);
+                                var oldDifficulty = parseInt(prevTarget.substring(2), 16);
+                                var newZeros = oldZeros;
+
+                                var newDifficulty = timeDifference / (Constants.AVERAGE_BLOCK_TIME_MS * Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS);
+
+                                console.log("newDifficulty", newDifficulty);
+
+                                while(newDifficulty > maxDifficulty){
+                                    newZeros--;
+                                    newDifficulty = newDifficulty / 256;
+                                }
+                                
+                                while(newDifficulty < 1){
+                                    newZeros++;
+                                    newDifficulty = newDifficulty * 256;
+                                }
+
+                                var newTarget = (maxDifficulty - parseInt(oldDifficulty * newDifficulty) % maxDifficulty).toString(16);
+                                while(newTarget.length < 6){
+                                    newTarget = "0" + newTarget;
+                                }
+                                var newZerosStr = newZeros.toString(16);
+                                while(newZerosStr.length < 2){
+                                    newZerosStr = "0" + newZerosStr;
+                                }
+
+                                console.log("New target : ", newZerosStr + newTarget);
+
+                                targetObj.target = newZerosStr + newTarget;
+
+                                TargetCollection.insert(targetObj, function(err, result){
+                                    cb();
+                                });
+                                
+                            });
+                                
+                        });
                     }
                 }, function(errs, results){
                     callback();
@@ -55,7 +108,7 @@ var MongoHandler = {
             var targetBlockNumber = blockNumber - (blockNumber % Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS);
             TargetCollection.find({blockNumber : targetBlockNumber}).toArray(function(err, docs){
                 if(err){
-                    console.log("MongoDB error: ", err);
+                    return console.log("MongoDB error: ", err);
                 }
                 callback(null, docs[0].target);
             });

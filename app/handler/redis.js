@@ -116,13 +116,13 @@ var RedisHandler = {
         });
     },
 
-    removeUnconfirmedTransactions : function(transactions, callback){
+    removeUnconfirmedTransactions : function(transactions){
         async.each(transactions, function(transaction, cb){
             RedisHandler.removeUnconfirmedTransaction(transaction.txId, cb);
         },
 
         function(errs, reply){
-            callback();
+            // callback();
         });
     },
 

@@ -33,7 +33,6 @@ exports.bindUserId = function(req, res, next, id) {
  * Fetch Users Balance Amount
  */
 exports.getUserBalance = function(req, res, next){
-    MongoHandler.getTargetForBlock(0, function(){});
     if(!CommonFunctions.validatePublicKeyHexString(req.userId)){
         return ErrorCodeHandler.getErrorJSONData({'code':20, 'res':res});
     }
@@ -52,6 +51,8 @@ exports.create = function(req, res) {
       nonce                 : 0,
       blockCreatorId        : "",
       previousBlockHash     : "",
+      proofHash             : "",
+      timestamp             : 0,
       totalAmount           : 0,
       totalFees             : 0,
       transactionCount      : 0,
@@ -77,10 +78,10 @@ exports.create = function(req, res) {
 
             function getTransactionArray(cb){
                 makeTransactionArray(Constants.BLOCK_MAX_TRANSACTIONS_COUNT, function(err, ids, transactions){
-                    if(transactions.length == 0){
-                        console.log("No Unconfirmed Transactions found to create Block !")
-                        return;             // TODO : Handle Properly
-                    }
+                    // if(transactions.length == 0){
+                    //     console.log("No Unconfirmed Transactions found to create Block !")
+                    //     return;             // TODO : Handle Properly
+                    // }
                     block.transactions = transactions;
                     block.transactionCount = transactions.length;
                     zaddClear = ids;        // Transaction ids to remove after creation of block
@@ -119,10 +120,14 @@ exports.create = function(req, res) {
                 block.transactionSignature = CommonFunctions.generateSignature(block.transactionHash, user.privateKey);
                 
                 MongoHandler.getTargetForBlock(block.blockNumber, function(err, target){
-                    var nonceAndHash = CommonFunctions.generateBlockHashAndNonce(target, block);
+                    console.time("BlockGenerationTime");
+                    var nonceAndHash = CommonFunctions.generateProofHashAndNonce(target, block);
                     block.nonce = nonceAndHash.nonce;
-                    block.blockHash = nonceAndHash.hash;
+                    block.proofHash = nonceAndHash.hash;
+                    block.timestamp = new Date().getTime();
+                    block.blockHash = CommonFunctions.generateBlockHash(block);
                     block.blockSignature = CommonFunctions.generateSignature(block.blockHash, user.privateKey);
+                    console.timeEnd("BlockGenerationTime");
                     cb();
                 });
                 
@@ -130,14 +135,11 @@ exports.create = function(req, res) {
 
             function validateGeneratedBlock(cb){
                 validateAndParseBlock(block, function(isValid, parsedBlock){
-                    if(isValid){
-                        block = parsedBlock;        // Not necessary when creating a block ourselves
-                    }
-                    else{
+                    if(!isValid){
                         console.log("Invalid Block Generated !!", JSON.stringify(block, null, 2));
-                        return;             // TODO : Handle Properly
                     }
-                    cb();
+                    block = parsedBlock;
+                    cb(!isValid);
                 });
             },
 
@@ -246,6 +248,8 @@ var validateAndParseBlock = function(block, callback){
     block.blockCreatorId = block.blockCreatorId.toLowerCase();
     block.totalFees = Number(block.totalFees);
     block.totalAmount = Number(block.totalAmount);
+    block.proofHash = block.proofHash.toLowerCase();
+    block.timestamp = parseInt(block.timestamp);
 
     block.previousBlockHash = block.previousBlockHash.toLowerCase();
 
@@ -253,7 +257,6 @@ var validateAndParseBlock = function(block, callback){
             block.blockNumber < 0
         ||  block.transactions.length > Constants.BLOCK_MAX_TRANSACTIONS_COUNT
         ||  block.transactionCount != block.transactions.length
-        ||  block.transactions.length == 0
     ){
         return callback(false, null);
     }
@@ -269,6 +272,7 @@ var validateAndParseBlock = function(block, callback){
 
         if(
                 !block.transactions[i].sender
+            ||  block.proofHash != CommonFunctions.generateProofHash(block)
             ||  !CommonFunctions.validatePublicKeyHexString(block.transactions[i].sender)
             ||  !block.transactions[i].receiver
             ||  !CommonFunctions.validatePublicKeyHexString(block.transactions[i].receiver)
@@ -315,17 +319,44 @@ var validateAndParseBlock = function(block, callback){
         return callback(false, null);
     }
 
-    if(block.blockNumber == 0 && block.previousBlockHash == Constants.GENESIS_BLOCK_PREV_HASH){
-        return callback(true, block);
-    }
+    async.waterfall([
+            function(cb){
+                MongoHandler.getTargetForBlock(block.blockNumber, function(err, target){
+                    cb(null, target);
+                });
+            },
 
-    BlockCollection.find({ blockNumber : block.blockNumber - 1 }, {_id : 0, blockNumber : 1, blockHash : 1}).limit(1).toArray(function(errs, docs){
-        var previousBlock = docs[0];
-        if(previousBlock.blockHash == block.previousBlockHash){
-            return callback(true, block);
-        }
-        callback(false, null);
+            function(target, cb){
+                if(!CommonFunctions.validateProofHash(block.proofHash, target)){
+                    return callback(false, null);
+                }
+                cb();
+            },
+
+            function(cb){
+                if(block.blockNumber == 0 && block.previousBlockHash == Constants.GENESIS_BLOCK_PREV_HASH){         // TODO : Add genesis block hash check here
+                    return callback(true, block);
+                }
+
+                BlockCollection.find({ blockNumber : block.blockNumber - 1 }, {_id : 0, blockNumber : 1, blockHash : 1, timestamp : 1}).limit(1).toArray(function(errs, docs){
+                    var previousBlock = docs[0];
+                    if(
+                            previousBlock.blockHash == block.previousBlockHash 
+                        &&  previousBlock.timestamp < block.timestamp 
+                        // &&  block.timestamp - previousBlock.timestamp <= 2 * Constants.AVERAGE_BLOCK_TIME_MS         // TODO : Uncomment
+                    ){
+                        return callback(true, block);
+                    }
+                    
+                    return callback(false, null);
+                });
+            }
+
+        ], function(errs, results){
+
     });
+
+    
 };
 
 var broadcastBlock = function(block){

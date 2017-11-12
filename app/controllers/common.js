@@ -91,17 +91,17 @@ var CommonFunctions = {
     return hash.digest('hex');        // TODO : Test for max number of transactions
   },
 
-  generateBlockHashAndNonce : function(target, block){
+  generateProofHashAndNonce : function(target, block){
     for(var i = 0; i < Number.MAX_SAFE_INTEGER; i++){
       block.nonce = i;
-      var hash = CommonFunctions.generateBlockHash(block);
-      if(CommonFunctions.validateBlockHash(hash, target)){
+      var hash = CommonFunctions.generateProofHash(block);
+      if(CommonFunctions.validateProofHash(hash, target)){
         return { hash : hash, nonce: block.nonce } ;
       }
     }
   },
 
-  validateBlockHash : function(hash, target){
+  validateProofHash : function(hash, target){
     var initialZeros = 2 * parseInt(target.substring(0,2), 16);
     var targetNum = parseInt(target.substring(2), 16);
     for(var i = 0; i < initialZeros; i++){
@@ -109,8 +109,34 @@ var CommonFunctions = {
         return false;
       }
     }
-    var blockHashNum = parseInt(target.substring(initialZeros, initialZeros + 6), 16);
+    var blockHashNum = parseInt(hash.substring(initialZeros, initialZeros + 6), 16);
     return (targetNum > blockHashNum);
+  },
+
+  generateProofHash : function(block){
+    var hash = crypto.createHash('sha256');
+
+    hash.update(""+block.blockNumber);
+    hash.update(""+block.nonce );
+    hash.update(block.blockCreatorId );
+    hash.update(block.previousBlockHash );
+    hash.update(""+block.totalAmount );
+    hash.update(""+block.totalFees );
+    block.transactions.forEach(function(transaction){
+      hash.update(transaction.txId );
+      hash.update("" + transaction.nonce );
+      hash.update(transaction.sender );
+      hash.update(transaction.receiver );
+      hash.update("" + transaction.amount );
+      hash.update("" + transaction.fees );
+      hash.update("" + transaction.deadline );
+      hash.update("" + transaction.signature );
+    });
+    hash.update(""+block.transactionCount );
+    hash.update(block.transactionHash );
+    hash.update(block.transactionSignature);
+
+    return hash.digest('hex');        // TODO : Test for max number of transactions
   },
 
   generateBlockHash : function(block){
@@ -118,6 +144,8 @@ var CommonFunctions = {
 
     hash.update(""+block.blockNumber);
     hash.update(""+block.nonce );
+    hash.update(block.proofHash);
+    hash.update(""+block.timestamp);
     hash.update(block.blockCreatorId );
     hash.update(block.previousBlockHash );
     hash.update(""+block.totalAmount );
