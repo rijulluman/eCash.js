@@ -15,6 +15,7 @@ module.exports = function (app) {
 
 
     app.route('/api/block/create/new').post(block.create); 		// For Testing only
+    app.route('/api/block/create/new100').post(block.create100Blocks); 		// For Testing only
 
     app.route('/api/balance/:userId').get(block.getUserBalance);
 

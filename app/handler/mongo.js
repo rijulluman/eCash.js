@@ -61,21 +61,21 @@ var MongoHandler = {
                                 var oldDifficulty = parseInt(prevTarget.substring(2), 16);
                                 var newZeros = oldZeros;
 
-                                var newDifficulty = timeDifference / (Constants.AVERAGE_BLOCK_TIME_MS * Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS);
+                                var newDifficulty = oldDifficulty * timeDifference / (Constants.AVERAGE_BLOCK_TIME_MS * Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS);
 
                                 console.log("newDifficulty", newDifficulty);
 
                                 while(newDifficulty > maxDifficulty){
-                                    newZeros--;
+                                    newZeros++;
                                     newDifficulty = newDifficulty / 256;
                                 }
                                 
-                                while(newDifficulty < 1){
-                                    newZeros++;
-                                    newDifficulty = newDifficulty * 256;
-                                }
+                                // while(newDifficulty < 1){
+                                //     newZeros++;
+                                //     newDifficulty = newDifficulty * 256;
+                                // }
 
-                                var newTarget = (maxDifficulty - parseInt(oldDifficulty * newDifficulty) % maxDifficulty).toString(16);
+                                var newTarget = parseInt(newDifficulty).toString(16);
                                 while(newTarget.length < 6){
                                     newTarget = "0" + newTarget;
                                 }

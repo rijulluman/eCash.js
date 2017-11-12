@@ -44,8 +44,31 @@ exports.getUserBalance = function(req, res, next){
 /**
  * Create a Block
  */
-exports.create = function(req, res) {
 
+exports.create = function(req, res) {
+    createBlock(req.body, function(err, block){
+        res.jsonp(block);
+    });
+};
+
+exports.create100Blocks = function(req, res) {
+    var arr = [];
+    for(var i = 0; i < 100; i++){
+        arr[i] = i;
+    }
+    var user = {
+        "privateKey": "fcbd864a695f0fef7162af1ff80641d351fc31e2ff35347488d83d1f386376e5",
+        "publicKey": "036efa45411e658bcafd151abe923334568ddd734e43e6432de38dac5a622c7756"
+    };
+    async.eachSeries(arr, function(a, cb){
+        createBlock(user, cb);
+    }, function(err, results){
+        res.send("Done!");
+    });
+};
+
+var createBlock = function(userData, callback) {
+    // TODO :  Call from Cron Script
     var block = {
       blockNumber           : 0,
       nonce                 : 0,
@@ -68,8 +91,8 @@ exports.create = function(req, res) {
 
     async.waterfall([
             function getBlockCreatorDetails(cb){
-                user.publicKey = req.body.publicKey;
-                user.privateKey = CommonFunctions.hexStringToBuffer(req.body.privateKey);
+                user.publicKey = userData.publicKey;
+                user.privateKey = CommonFunctions.hexStringToBuffer(userData.privateKey);
                 //TODO : Change input method (Maybe Redis via login)
 
                 block.blockCreatorId = user.publicKey;
@@ -166,7 +189,8 @@ exports.create = function(req, res) {
             }
 
         ], function(errs, result){
-            res.jsonp(block);   // TODO : Remove / Replace cron script
+            console.log("Block Done");
+            callback(null, block);
         });
 };
 
