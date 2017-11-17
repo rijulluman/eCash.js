@@ -12,6 +12,8 @@ module.exports = Object.freeze({
   "DIFFICULTY_CHANGE_EVERY_BLOCKS": 10,
   "TRANSACTION_DEADLINE_OFFSET"   : 100,     // Number of blocks before expiring
   "AVERAGE_BLOCK_TIME_MS"         : 6000,      // 60000 * 1,     // 1 min
+  "MAX_STAKEABLE_BLOCKS"          : 100,
+  "MIN_HOLD_FOR_STAKE_BLOCKS"     : 20,
 
 
   "CURRENT_BLOCK_REDIS_TTL"       : 200,     // Idealy equal to average block time

@@ -56,9 +56,15 @@ exports.create100Blocks = function(req, res) {
     for(var i = 0; i < 100; i++){
         arr[i] = i;
     }
-    var user = {
-        "privateKey": "fcbd864a695f0fef7162af1ff80641d351fc31e2ff35347488d83d1f386376e5",
-        "publicKey": "036efa45411e658bcafd151abe923334568ddd734e43e6432de38dac5a622c7756"
+    //TODO : Change input method / Read from Login
+    var user = 
+    // {
+    //     "privateKey": "fcbd864a695f0fef7162af1ff80641d351fc31e2ff35347488d83d1f386376e5",
+    //     "publicKey": "036efa45411e658bcafd151abe923334568ddd734e43e6432de38dac5a622c7756"
+    // };
+    {
+        "privateKey": "418836c2f238940f9f62115800075b956ec0f167a60bce42663e9958f62eae7b",
+        "publicKey": "027ce749cc99715d1dd0904c7ccf5e3a9988e57fbbecfe9b0d73f7fff32f3b12a6"
     };
     async.eachSeries(arr, function(a, cb){
         createBlock(user, cb);
@@ -93,18 +99,13 @@ var createBlock = function(userData, callback) {
             function getBlockCreatorDetails(cb){
                 user.publicKey = userData.publicKey;
                 user.privateKey = CommonFunctions.hexStringToBuffer(userData.privateKey);
-                //TODO : Change input method (Maybe Redis via login)
-
+                
                 block.blockCreatorId = user.publicKey;
                 cb();
             },
 
             function getTransactionArray(cb){
                 makeTransactionArray(Constants.BLOCK_MAX_TRANSACTIONS_COUNT, function(err, ids, transactions){
-                    // if(transactions.length == 0){
-                    //     console.log("No Unconfirmed Transactions found to create Block !")
-                    //     return;             // TODO : Handle Properly
-                    // }
                     block.transactions = transactions;
                     block.transactionCount = transactions.length;
                     zaddClear = ids;        // Transaction ids to remove after creation of block
@@ -167,6 +168,7 @@ var createBlock = function(userData, callback) {
             },
 
             function addBlockToDb(cb){
+                // TODO : Add to unconfirmed Blocks DB
                 BlockCollection.insert(block, function(err, reply){
                     if(err){
                         console.log("Insert Mongo Error", err);
@@ -261,21 +263,23 @@ var removeTransactionsAlreadyInBlockChain = function(transactions, callback){
     });
 };
 
-var validateAndParseBlock = function(block, callback){
-    block.blockNumber = parseInt(block.blockNumber);
-    block.nonce = parseInt(block.nonce);
-    block.transactionCount = parseInt(block.transactionCount);
-    block.transactionHash = block.transactionHash.toLowerCase();
-    block.transactionSignature = block.transactionSignature.toLowerCase();
-    block.blockHash = block.blockHash.toLowerCase();
-    block.blockSignature = block.blockSignature.toLowerCase();
-    block.blockCreatorId = block.blockCreatorId.toLowerCase();
-    block.totalFees = Number(block.totalFees);
-    block.totalAmount = Number(block.totalAmount);
-    block.proofHash = block.proofHash.toLowerCase();
-    block.timestamp = parseInt(block.timestamp);
-
-    block.previousBlockHash = block.previousBlockHash.toLowerCase();
+var validateAndParseBlock = function(blockInput, callback){
+    var block = {
+      blockNumber           : parseInt(blockInput.blockNumber),
+      nonce                 : parseInt(blockInput.nonce),
+      blockCreatorId        : blockInput.blockCreatorId.toLowerCase(),
+      previousBlockHash     : blockInput.previousBlockHash.toLowerCase(),
+      proofHash             : blockInput.proofHash.toLowerCase(),
+      timestamp             : parseInt(blockInput.timestamp),
+      totalAmount           : Number(blockInput.totalAmount),
+      totalFees             : Number(blockInput.totalFees),
+      transactionCount      : parseInt(blockInput.transactionCount),
+      transactionHash       : blockInput.transactionHash.toLowerCase(),
+      transactionSignature  : blockInput.transactionSignature.toLowerCase(),
+      blockHash             : blockInput.blockHash.toLowerCase(),
+      blockSignature        : blockInput.blockSignature.toLowerCase(),
+      transactions          : blockInput.transactions
+    };
 
     if(
             block.blockNumber < 0
