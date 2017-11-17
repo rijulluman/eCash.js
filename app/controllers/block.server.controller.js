@@ -57,7 +57,7 @@ exports.create100Blocks = function(req, res) {
         arr[i] = i;
     }
     //TODO : Change input method / Read from Login
-    var userObj = 
+    var user = 
     // {
     //     "privateKey": "fcbd864a695f0fef7162af1ff80641d351fc31e2ff35347488d83d1f386376e5",
     //     "publicKey": "036efa45411e658bcafd151abe923334568ddd734e43e6432de38dac5a622c7756"
@@ -67,13 +67,13 @@ exports.create100Blocks = function(req, res) {
         "publicKey": "027ce749cc99715d1dd0904c7ccf5e3a9988e57fbbecfe9b0d73f7fff32f3b12a6"
     };
     async.eachSeries(arr, function(a, cb){
-        createBlock(userObj, cb);
+        createBlock(user, cb);
     }, function(err, results){
         res.send("Done!");
     });
 };
 
-var createBlock = function(userObj, callback) {
+var createBlock = function(userData, callback) {
     // TODO :  Call from Cron Script
     var block = {
       blockNumber           : 0,
@@ -92,24 +92,15 @@ var createBlock = function(userObj, callback) {
       transactions          : []
     };
 
-    var userData = {};
+    var user = {};
     var zaddClear = [];
 
     async.waterfall([
             function getBlockCreatorDetails(cb){
-                userData.publicKey = userObj.publicKey;
-                userData.privateKey = CommonFunctions.hexStringToBuffer(userObj.privateKey);
+                user.publicKey = userData.publicKey;
+                user.privateKey = CommonFunctions.hexStringToBuffer(userData.privateKey);
                 
-                block.blockCreatorId = userData.publicKey;
-                cb();
-            },
-
-            function updateBlockChain(cb){
-                // TODO : Call Blockchain update here
-                // Add currentBlock - 1 to blockchain
-                // Remove all currentBlock - 1 from unconfirmed blocks
-                // 
-                // Also delete unconfirmed transactions present in added block from memory
+                block.blockCreatorId = user.publicKey;
                 cb();
             },
 
@@ -133,9 +124,14 @@ var createBlock = function(userObj, callback) {
                 cb();
             },
 
+            function updateBlockChain(cb){
+                // TODO : Call Blockchain update here
+                // Also delete unconfirmed transactions present in block from memory
+                cb();
+            },
+
             function getPreviousBlock(cb){
-                // TODO : Add unconfirmed block read here
-                BlockChainCollection.find({}, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).limit(1).toArray(function(errs, docs){
+                BlockCollection.find({}, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).limit(1).toArray(function(errs, docs){
                     var previousBlock = docs[0];
                     block.blockNumber = previousBlock.blockNumber + 1;
                     block.previousBlockHash = previousBlock.blockHash;
@@ -145,7 +141,7 @@ var createBlock = function(userObj, callback) {
 
             function generateHashesAndSignatures(cb){
                 block.transactionHash = CommonFunctions.generateTransactionArrayHash(block.transactions);
-                block.transactionSignature = CommonFunctions.generateSignature(block.transactionHash, userData.privateKey);
+                block.transactionSignature = CommonFunctions.generateSignature(block.transactionHash, user.privateKey);
                 
                 MongoHandler.getTargetForBlock(block.blockNumber, function(err, target){
                     console.time("BlockGenerationTime");
@@ -154,7 +150,7 @@ var createBlock = function(userObj, callback) {
                     block.proofHash = nonceAndHash.hash;
                     block.timestamp = new Date().getTime();
                     block.blockHash = CommonFunctions.generateBlockHash(block);
-                    block.blockSignature = CommonFunctions.generateSignature(block.blockHash, userData.privateKey);
+                    block.blockSignature = CommonFunctions.generateSignature(block.blockHash, user.privateKey);
                     console.timeEnd("BlockGenerationTime");
                     cb();
                 });
@@ -172,7 +168,8 @@ var createBlock = function(userObj, callback) {
             },
 
             function addBlockToDb(cb){
-                MongoHandler.addUnconfirmedBlock(block, function(err, reply){
+                // TODO : Add to unconfirmed Blocks DB
+                BlockCollection.insert(block, function(err, reply){
                     if(err){
                         console.log("Insert Mongo Error", err);
                     }
@@ -251,7 +248,7 @@ var validateAccountBalances = function(transactions, callback){
 var removeTransactionsAlreadyInBlockChain = function(transactions, callback){
     var validTransactions = [];
     async.each(transactions, function(transaction, cb){
-        BlockChainCollection.find({"transactions.txId" : transaction.txId}, {_id : 1}).limit(1).toArray(function(err, docs){
+        BlockCollection.find({"transactions.txId" : transaction.txId}, {_id : 1}).limit(1).toArray(function(err, docs){
             if(docs && docs.length){
                 RedisHandler.removeTransactionsFromZlist([transaction.txId]);
                 RedisHandler.removeUnconfirmedTransactions([transaction]);
@@ -369,7 +366,7 @@ var validateAndParseBlock = function(blockInput, callback){
                     return callback(true, block);
                 }
 
-                BlockChainCollection.find({ blockNumber : block.blockNumber - 1 }, {_id : 0, blockNumber : 1, blockHash : 1, timestamp : 1}).limit(1).toArray(function(errs, docs){
+                BlockCollection.find({ blockNumber : block.blockNumber - 1 }, {_id : 0, blockNumber : 1, blockHash : 1, timestamp : 1}).limit(1).toArray(function(errs, docs){
                     var previousBlock = docs[0];
                     if(
                             previousBlock.blockHash == block.previousBlockHash 
