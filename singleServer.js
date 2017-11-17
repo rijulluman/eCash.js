@@ -19,11 +19,12 @@ var config                  =    require("config/config");
 // listening port for Express/http server
 const PORT                  =   config.express_port;
 // mongo config
-const MONGO_URL             = config.mongo_url;
-const MONGO_COLL_TRANSACTION= config.mongo_coll_transaction;
-const MONGO_COLL_BLOCK      = config.mongo_coll_block;
-const MONGO_COLL_BALANCE    = config.mongo_coll_balance;
-const MONGO_COLL_TARGET     = config.mongo_coll_target;
+const MONGO_URL                     = config.mongo_url;
+const MONGO_COLL_TRANSACTION        = config.mongo_coll_transaction;
+const MONGO_COLL_BLOCKCHAIN         = config.mongo_coll_blockchain;
+const MONGO_COLL_UNCONFIRMED_BLOCK  = config.mongo_coll_unconfirmed_block;
+const MONGO_COLL_BALANCE            = config.mongo_coll_balance;
+const MONGO_COLL_TARGET             = config.mongo_coll_target;
 
 // redis config
 const REDIS_MA_HOST        =   config.redis.MA.host;
@@ -93,11 +94,12 @@ var server = app.listen(PORT, function () {
 var MongoClient         =   require('mongodb').MongoClient;
 global.ObjectId         =   require('mongodb').ObjectID;
 
-global.mongoConnection        =   null;
-global.TransactionCollection  =   null;
-global.BlockCollection        =   null;
-global.BalanceCollection      =   null;
-global.TargetCollection       =   null;
+global.mongoConnection              =   null;
+global.TransactionCollection        =   null;
+global.BlockChainCollection         =   null;
+global.UnconfirmedBlockCollection   =   null;
+global.BalanceCollection            =   null;
+global.TargetCollection             =   null;
 
 MongoClient.connect(MONGO_URL, function(err, db) {  
   // on error
@@ -113,10 +115,11 @@ MongoClient.connect(MONGO_URL, function(err, db) {
   mongoConnection       =   db;
   
   // set collection
-  TransactionCollection    = mongoConnection.collection(MONGO_COLL_TRANSACTION);
-  BlockCollection          = mongoConnection.collection(MONGO_COLL_BLOCK);
-  BalanceCollection        = mongoConnection.collection(MONGO_COLL_BALANCE);
-  TargetCollection         = mongoConnection.collection(MONGO_COLL_TARGET);
+  TransactionCollection       = mongoConnection.collection(MONGO_COLL_TRANSACTION);
+  BlockChainCollection        = mongoConnection.collection(MONGO_COLL_BLOCKCHAIN);
+  BalanceCollection           = mongoConnection.collection(MONGO_COLL_BALANCE);
+  TargetCollection            = mongoConnection.collection(MONGO_COLL_TARGET);
+  UnconfirmedBlockCollection  = mongoConnection.collection(MONGO_COLL_UNCONFIRMED_BLOCK);
 
   // mongo db started
   console.log('Mongo DB Started');

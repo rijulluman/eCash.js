@@ -6,9 +6,48 @@ var async = require("async");
 
 var MongoHandler = {
     getCurrentBlockNumber : function(callback){
-        BlockCollection.find({}, {_id : 0, blockNumber : 1}).sort({"blockNumber" : -1}).limit(1).toArray(function(err, docs){
-            var blockNumber = docs[0] ? docs[0].blockNumber : 0;
-            callback(null, blockNumber);
+        async.parallel([
+                function(cb){   
+                    UnconfirmedBlockCollection.find({}, {_id : 0, blockNumber : 1}).sort({"blockNumber" : -1}).limit(1).toArray(function(err, docs){
+                        cb(null, docs[0] && docs[0].blockNumber ? docs[0].blockNumber : 0);
+                    });
+                },
+
+                function(cb){
+                    BlockChainCollection.find({}, {_id : 0, blockNumber : 1}).sort({"blockNumber" : -1}).limit(1).toArray(function(err, docs){
+                        cb(null, docs[0] && docs[0].blockNumber ? docs[0].blockNumber : 0);
+                    });
+                },
+            ], function(errs, results){
+                if(results[0] > results[1]){
+                    callback(null, results[0]);
+                }
+                else{
+                    callback(null, results[1]);
+                }
+        });
+    },
+
+    getCurrentBlock : function(callback){
+        async.parallel([
+                function(cb){   
+                    UnconfirmedBlockCollection.find({}, {_id : 0}).sort({"blockNumber" : -1, "stake" : -1}).limit(1).toArray(function(err, docs){
+                        cb(null, docs[0] && docs[0].blockNumber ? docs[0] : {});
+                    });
+                },
+
+                function(cb){
+                    BlockChainCollection.find({}, {_id : 0}).sort({"blockNumber" : -1}).limit(1).toArray(function(err, docs){
+                        cb(null, docs[0] && docs[0].blockNumber ? docs[0] : {});
+                    });
+                },
+            ], function(errs, results){
+                if(results[0].blockNumber && results[0].blockNumber > results[1].blockNumber){
+                    callback(null, results[0]);
+                }
+                else{
+                    callback(null, results[1]);
+                }
         });
     },
 
@@ -40,13 +79,17 @@ var MongoHandler = {
                         });
                     }
                     else{
-                        BlockCollection.find({ $or : [ 
-                            { blockNumber : blockNumber - 1 },      // -1 since next block may not exist yet
-                            { blockNumber : blockNumber - Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS } 
+                        var prevBlockNumber = blockNumber - 2 - Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS;
+                        if(prevBlockNumber < 0){
+                            prevBlockNumber = 0;
+                        }
+                        BlockChainCollection.find({ $or : [ 
+                            { blockNumber : blockNumber - 2 },      // -1 since next block may not exist yet, -1 since last block in generally in unconfirmed blocks
+                            { blockNumber : prevBlockNumber } 
                         ] }, {blockNumber : 1, timestamp : 1}).sort({blockNumber : 1}).toArray(function(err, docs){
-                            if(!docs[0].timestamp || !docs[0].timestamp){     
+                            if(!docs[0].timestamp || !docs[1].timestamp){     
                                 console.log("Missing Timestamp while calculating Target");      // TODO : Handle Properly
-                                cb();
+                                return cb();
                             }
                             var timeDifference = docs[1].timestamp - docs[0].timestamp;
                             TargetCollection.find({blockNumber : blockNumber - Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS}).toArray(function(err, targetDocs){
@@ -63,7 +106,7 @@ var MongoHandler = {
 
                                 var newDifficulty = oldDifficulty * timeDifference / (Constants.AVERAGE_BLOCK_TIME_MS * Constants.DIFFICULTY_CHANGE_EVERY_BLOCKS);
 
-                                console.log("newDifficulty", newDifficulty);
+                                console.log("newDifficulty", newDifficulty);      // TODO : Remove
 
                                 while(newDifficulty > maxDifficulty){
                                     newZeros++;
@@ -84,7 +127,7 @@ var MongoHandler = {
                                     newZerosStr = "0" + newZerosStr;
                                 }
 
-                                console.log("New target : ", newZerosStr + newTarget);
+                                console.log("New target : ", newZerosStr + newTarget);      // TODO : Remove
 
                                 targetObj.target = newZerosStr + newTarget;
 
@@ -116,7 +159,7 @@ var MongoHandler = {
     },
 
     setAllBlockBalances : function (callback){
-        BalanceCollection.find({}, {blockNumber : 1}).toArray(function(err, docs){
+        BalanceCollection.find({}, {blockNumber : 1}).sort({blockNumber : 1}).toArray(function(err, docs){
             if(err){
                 console.log("MongoErr: ", err);
                 callback(err);
@@ -135,52 +178,7 @@ var MongoHandler = {
                     }
 
                     async.each(toFillBlocks, function(blockNumber, cb){
-                            BlockCollection.find({blockNumber : blockNumber}).toArray(function(err, doc){
-                                if(err || !doc){
-                                    console.log("No Such Block : ", blockNumber);
-                                    cb();
-                                }
-                                else{
-                                    var block = doc[0];
-                                    var transactions = block.transactions ? block.transactions : [];
-                                    var users = [block.blockCreatorId];
-                                    var balances = [];
-
-                                    transactions.forEach(function(transaction){
-                                        if(users.indexOf(transaction.sender) == -1){
-                                            users.push(transaction.sender);
-                                        }
-                                        if(users.indexOf(transaction.receiver) == -1){
-                                            users.push(transaction.receiver);
-                                        }
-                                    });
-
-                                    async.each(users, function(userId, cb2){
-                                        MongoHandler.calculateAccountBalanceTillBlock(userId, blockNumber, function(err, balance){
-                                            balances.push({
-                                                user : userId,
-                                                balance : balance
-                                            });
-                                            cb2();
-                                        });
-
-                                    }, function(errs, results){
-                                        var balanceObj = {
-                                            blockNumber : blockNumber,
-                                            blockHash : block.blockHash,
-                                            balances : balances
-                                        };
-                                        BalanceCollection.insert(balanceObj, function(err, result){
-                                            if(err){
-                                                console.log("Mongo Insert Error");
-                                            }
-                                            cb();
-                                        });
-                                    });
-                                }
-
-                            });
-
+                            MongoHandler.setBlockBalances(blockNumber, cb);
                         }, function(errs, results){
                             callback();
                         });
@@ -192,18 +190,52 @@ var MongoHandler = {
     setBlockBalances : function (blockNumber, callback) {
         BalanceCollection.find({blockNumber : blockNumber}).toArray(function(err, docs){
             if(docs && docs.length == 0){
-                var balanceObject = {
-                    blockNumber : blockNumber,
-                    blockHash : blockHash,
-                    balances : []
-                };
-                var users = Object.keys(balances);
-                // users.forEach();
-                // BalanceCollection.insert(, function(err, reply){
-                //     if(err){
-                //         console.log("Insert Mongo Error", err);
-                //     }
-                // });
+                BlockChainCollection.find({blockNumber : blockNumber}).toArray(function(err, doc){
+                    if(err || !doc){
+                        console.log("No Such Block : ", blockNumber);
+                        callback();
+                    }
+                    else{
+                        var block = doc[0];
+                        var transactions = block.transactions ? block.transactions : [];
+                        var users = [block.blockCreatorId];
+                        var balances = [];
+
+                        transactions.forEach(function(transaction){
+                            if(users.indexOf(transaction.sender) == -1){
+                                users.push(transaction.sender);
+                            }
+                            if(users.indexOf(transaction.receiver) == -1){
+                                users.push(transaction.receiver);
+                            }
+                        });
+
+                        async.each(users, function(userId, cb){
+                            MongoHandler.calculateAccountBalanceTillBlock(userId, blockNumber, function(err, balance){
+                                balances.push({
+                                    user : userId,
+                                    balance : balance
+                                });
+                                cb();
+                            });
+
+                        }, function(errs, results){
+                            var balanceObj = {
+                                blockNumber : blockNumber,
+                                blockHash : block.blockHash,
+                                blockCreatorId : block.blockCreatorId,
+                                balances : balances
+                            };
+                            BalanceCollection.insert(balanceObj, function(err, result){
+                                if(err){
+                                    console.log("Mongo Insert Error");
+                                }
+                                callback();
+                            });
+                        });
+                    }
+
+                });
             }
             else{
                 console.log("Duplicate Balance Insert : Block Number : " + blockNumber + "  BlockHash : " + blockHash);
@@ -237,7 +269,7 @@ var MongoHandler = {
 
         async.parallel([
                 function sentCoins(cb){
-                    BlockCollection.aggregate([
+                    BlockChainCollection.aggregate([
                             {                                               // This match will reduce the number of unwind operations
                                 $match : matchSenderQuery
                             },
@@ -263,7 +295,7 @@ var MongoHandler = {
                 },
 
                 function receivedCoins(cb){
-                    BlockCollection.aggregate([
+                    BlockChainCollection.aggregate([
                             {                                               // This match will reduce the number of unwind operations
                                 $match : matchReceiverQuery
                             },
@@ -288,7 +320,7 @@ var MongoHandler = {
                 },
 
                 function earnedFees(cb){
-                    BlockCollection.aggregate([
+                    BlockChainCollection.aggregate([
                             {                                               // This match will reduce the number of unwind operations
                                 $match : matchCreatorQuery
                             },
@@ -309,6 +341,138 @@ var MongoHandler = {
         });
             
     },
+
+    /**
+     * Calculate CoinAge/Stakable coins for POS (Ignores stake in the last block, which is generally in the unconfirmed blocks)
+     */
+    calculateCoinAge : function(userId, suppliedBlockNumber, callback){
+        // TODO : Add lastBlock stake from Unconfirmed Blocks?
+        var totalStake = 0;
+        async.waterfall([
+                function(cb){
+                    MongoHandler.setAllBlockBalances(function(){
+                        cb();
+                    });
+                },
+
+                function(cb){
+                    if(suppliedBlockNumber){
+                        cb(null, suppliedBlockNumber);
+                    }
+                    else{
+                        MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
+                            cb(null, blockNumber);
+                        });
+                    }
+                },
+
+                function(endBlock, cb){
+                    var startBlock = endBlock - Constants.MAX_STAKEABLE_BLOCKS - Constants.MIN_HOLD_FOR_STAKE_BLOCKS;
+                    if(startBlock < 0){
+                        startBlock = 0;
+                    }
+                    var stakeStartBlock = endBlock - Constants.MAX_STAKEABLE_BLOCKS;
+                    if(stakeStartBlock < 0){
+                        stakeStartBlock = 0;
+                    }
+                    if(startBlock != stakeStartBlock - Constants.MIN_HOLD_FOR_STAKE_BLOCKS){ 
+                        stakeStartBlock = startBlock + Constants.MIN_HOLD_FOR_STAKE_BLOCKS;
+                        if(stakeStartBlock > endBlock){
+                            return cb();        // 0 stake since minimum hold blocks not satisfied
+                        }
+                    }
+                    var blocks = [];
+                    var balances = {};
+
+                    for(var i = startBlock; i <= endBlock; i++ ){
+                        blocks.push(i);
+                    }
+                    
+                    BalanceCollection.find({
+                        $or : [
+                            { "balances.user"  : userId },
+                            { "blockCreatorId" : userId }
+                        ],
+                        blockNumber : { $in : blocks }
+                        // $and : [ 
+                        // { blockNumber : {$gte : startBlock } }, 
+                        // { blockNumber : {$lte : endBlock} }
+                        // ]
+                        }).sort({blockNumber : 1}).toArray(function(err, docs){
+                            if(err){
+                                console.log("Mongo Err: ", err);
+                                return;
+                            }
+                            docs.forEach(function(data){                            // Load users Balance in each block here
+                                for(var i = 0; i < data.balances.length; i++){
+                                    if(data.balances[i].user == userId){
+                                        balances[data.blockNumber] = data.balances[i].balance; 
+                                        break;
+                                    }
+                                }
+                            });
+
+                            BalanceCollection.find({ "balances.user"  : userId, blockNumber : {$lt : startBlock}}).sort({blockNumber : -1}).limit(1).toArray(function(err, lastBalance){
+                                if(err){
+                                    console.log("Mongo Err: ", err);
+                                    return;
+                                }
+                                else if(!lastBalance || !lastBalance.length|| !lastBalance[0].balances.length){
+                                    if(balances[startBlock] == null){               // If no transaction before startBlock, Balance = 0
+                                        balances[startBlock] = 0;
+                                    }
+                                }
+                                else{
+                                    if(balances[startBlock] == null){               // Load last balance as balance of startBlock
+                                        lastBalance[0].balances.forEach(function(data){
+                                            if(data.user == userId){
+                                                balances[startBlock] = data.balance;
+                                            }
+                                        });
+                                    }
+                                }
+
+                                for(var i = startBlock + 1; i <= endBlock; i++){       // Load previous balance as current balance for all blocks without any transaction by given user
+                                    if(balances[i] == null){
+                                        balances[i] = balances[i-1];
+                                    }
+                                }
+
+                                docs.forEach(function(data){
+                                    if(data.blockCreatorId == userId){
+                                        var lastBlock = data.blockNumber + Constants.MIN_HOLD_FOR_STAKE_BLOCKS;
+                                        if(lastBlock > endBlock){
+                                            lastBlock = endBlock;
+                                        }
+                                        for(var i = data.blockNumber; i < lastBlock ; i++){
+                                            balances[i] -= 1;               // Remove 1 Stake-able coin from next hold blocks, since coin stake used for creation of current block
+                                        }
+                                    }
+                                });
+
+                                for(var i = stakeStartBlock; i <=endBlock ; i++){       // Add all blocks stake
+                                    totalStake += balances[i];
+                                }
+
+                                cb();
+                            });
+                    });
+                },
+                
+            ], function(errs, results){
+                callback(null, totalStake);
+        });
+    },
+
+    addUnconfirmedBlock : function(block, callback){
+        MongoHandler.calculateCoinAge(block.blockCreatorId, block.blockNumber - 1, function(err, stake){
+            block.stake = stake;
+            UnconfirmedBlockCollection.insert(block, function(err, reply){
+                callback(err, reply);
+            });
+        });
+    },
+
 };
 
 module.exports = MongoHandler;
