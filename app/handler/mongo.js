@@ -115,7 +115,7 @@ var MongoHandler = {
         });
     },
 
-    setAllBlockBalances : function (callback){
+    setAllBlockBalances : function (callback){          // To be used for stake calculation only. Not to be used for creating new blocks
         BalanceCollection.find({}, {blockNumber : 1}).sort({blockNumber : 1}).toArray(function(err, docs){
             if(err){
                 console.log("MongoErr: ", err);
@@ -144,7 +144,7 @@ var MongoHandler = {
         });
     },
 
-    setBlockBalances : function (blockNumber, callback) {
+    setBlockBalances : function (blockNumber, callback) {          // To be used for stake calculation only. Not to be used for creating new blocks
         BalanceCollection.find({blockNumber : blockNumber}).toArray(function(err, docs){
             if(docs && docs.length == 0){
                 BlockCollection.find({blockNumber : blockNumber}).toArray(function(err, doc){
@@ -304,7 +304,6 @@ var MongoHandler = {
      */
     calculateCoinAge : function(userId, suppliedBlockNumber, callback){
         var totalStake = 0;
-        // suppliedBlockNumber = 10;
         async.waterfall([
                 function(cb){
                     MongoHandler.setAllBlockBalances(function(){

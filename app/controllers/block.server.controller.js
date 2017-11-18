@@ -168,7 +168,6 @@ var createBlock = function(userData, callback) {
             },
 
             function addBlockToDb(cb){
-                // TODO : Add to unconfirmed Blocks DB
                 BlockCollection.insert(block, function(err, reply){
                     if(err){
                         console.log("Insert Mongo Error", err);
@@ -191,7 +190,7 @@ var createBlock = function(userData, callback) {
             }
 
         ], function(errs, result){
-            console.log("Block Done");
+            console.log("Block Done !");
             callback(null, block);
         });
 };
