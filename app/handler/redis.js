@@ -28,7 +28,6 @@ var RedisHandler = {
     clearCurrentBlock : function(callback){
         RedisStoreMA.del(redisPath.currentBlock, callback);
     },
-
   
     addUnconfirmedTransaction: function(transaction, callback) {
         async.waterfall([

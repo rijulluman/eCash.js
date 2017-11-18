@@ -56,6 +56,23 @@ app.all('*', function(req, res, next) {
 });
 
 /**
+ * Socket.io
+ */
+var server = require('http').Server(app);
+global.BroadcastMaster = require('socket.io')(server);    // var io = 
+server.listen(config.socket_io_port);
+
+var blockController = require("app/controllers/block.server.controller");
+var transactionController = require("app/controllers/transaction.server.controller");
+BroadcastMaster.on('connection', function (socket) {
+  socket.on(Constants.BROADCAST_BLOCK_SOCKET, blockController.acceptBroadcastBlock);
+  socket.on(Constants.BROADCAST_TRANSACTION_SOCKET, transactionController.acceptBroadcastTransaction);
+  // console.log("io.sockets.connected: ", BroadcastMaster.sockets.connected);
+  console.log("io.engine.clientsCount: ", BroadcastMaster.engine.clientsCount); // Works !
+});
+
+
+/**
  * Redis
  * Setting & Configurations
  */

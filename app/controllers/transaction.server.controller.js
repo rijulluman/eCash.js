@@ -45,47 +45,6 @@ exports.read = function(req, res) {
     res.jsonp(req.transaction);
 };
 
-exports.validate = function (req, res, next) {
-    var transaction = req.transaction != null ? req.transaction : req.body;
-    if(!transaction){
-        return ErrorCodeHandler.getErrorJSONData({'code':5, 'res':res});
-    }
-    transaction.amount = validateCoinValue(transaction.amount);
-    if(!transaction.amount){
-        return ErrorCodeHandler.getErrorJSONData({'code':6, 'res':res});
-    }
-    transaction.fees = validateCoinValue(transaction.fees);
-    if(!transaction.fees){
-        return ErrorCodeHandler.getErrorJSONData({'code':7, 'res':res});
-    }
-    if(!transaction.sender || !CommonFunctions.validatePublicKeyHexString(transaction.sender)){
-        return ErrorCodeHandler.getErrorJSONData({'code':8, 'res':res});
-    }
-    transaction.sender = transaction.sender.toLowerCase();
-    if(!transaction.receiver || !CommonFunctions.validatePublicKeyHexString(transaction.receiver)){
-        return ErrorCodeHandler.getErrorJSONData({'code':9, 'res':res});
-    }
-    transaction.receiver = transaction.receiver.toLowerCase();
-    if(!transaction.nonce || isNaN(parseInt(transaction.nonce)) || parseInt(transaction.nonce) < Constants.MINIMUM_TRANSACTION_NONCE){
-        return ErrorCodeHandler.getErrorJSONData({'code':13, 'res':res});
-    }
-    if(transaction.sender == transaction.receiver){
-        return ErrorCodeHandler.getErrorJSONData({'code':16, 'res':res});
-    }
-    transaction.nonce = parseInt(transaction.nonce);
-    if(CommonFunctions.generateTransactionHash(transaction) != transaction.txId){
-        return ErrorCodeHandler.getErrorJSONData({'code':14, 'res':res});
-    }
-    transaction.txId = transaction.txId.toLowerCase();
-    if(!CommonFunctions.verifySignature(transaction.txId, transaction.sender, transaction.signature)){
-        return ErrorCodeHandler.getErrorJSONData({'code':15, 'res':res});
-    }
-    transaction.signature = transaction.signature.toLowerCase();
-    req.transaction = transaction;
-    next();
-
-};
-
 exports.create = function (req, res, next) {
     var transaction = {
         txId        : "",   // Unique Hash for this transaction
@@ -161,23 +120,83 @@ exports.create = function (req, res, next) {
         function generateSignature(cb){
             transaction.signature = CommonFunctions.generateSignature(transaction.txId, privateKey);
             cb();
-        },
+        }
         
-
         ], function(){
-            req.transaction = transaction;
-            next();
+            addUnconfirmedTransaction(transaction);
+            broadcast(transaction);
+            res.status(200).jsonp(transaction);
         });
 
     
 };
 
-exports.broadcast = function (req, res, next) {
-    res.status(200).jsonp(req.transaction);
+/**
+ * Accept, verify and add broadcasted Unconfirmed Transaction into Redis
+ */
+
+exports.acceptBroadcastTransaction = function(transaction){
+    // TODO : Re broadcast ? Will need to handle infinite loop handling
+    console.log("Incoming BroadcastTransaction : ", transaction);
+    addUnconfirmedTransaction(transaction);
 };
 
-exports.addUnconfirmed = function (req, res, next) {
-    RedisHandler.addUnconfirmedTransaction(req.transaction, function (err, reply) {
-        next();
+/**
+ * Validate and add transaction to Redis
+ */
+var addUnconfirmedTransaction = function(transaction){
+    // When creating a block, we check if transaction exists in blockchain
+    // TTL will be updated incase Transaction already exists in Redis
+    validateAndParseTransaction(transaction, function(err, validatedTransaction){
+        if(validatedTransaction){
+            RedisHandler.addUnconfirmedTransaction(validatedTransaction, function (err, reply) {
+                // Transaction Added
+            }); 
+        }
     });
+};
+
+var broadcast = function (transaction) {
+    validateAndParseTransaction(transaction, function(err, validatedTransaction){
+        if(validatedTransaction){
+            BroadcastMaster.sockets.emit(Constants.BROADCAST_TRANSACTION_SOCKET, validatedTransaction);
+        }
+    });
+};
+
+var validateAndParseTransaction = function (transactionInput, callback) {
+    if(!transactionInput || typeof(transactionInput) != "object" || Object.keys(transactionInput).length < 8){
+        return callback(null, false);
+    }
+
+    var transaction = {
+        txId        : transactionInput.txId.toLowerCase(),
+        sender      : transactionInput.sender.toLowerCase(),
+        receiver    : transactionInput.receiver.toLowerCase(),
+        amount      : validateCoinValue(transactionInput.amount),
+        fees        : validateCoinValue(transactionInput.fees),
+        deadline    : parseInt(transactionInput.deadline),
+        nonce       : parseInt(transactionInput.nonce),
+        signature   : transactionInput.signature.toLowerCase()
+    };
+
+    if(
+            !transaction.amount
+        ||  !transaction.fees
+        ||  !transaction.sender 
+        ||  !CommonFunctions.validatePublicKeyHexString(transaction.sender)
+        ||  !transaction.receiver 
+        ||  !CommonFunctions.validatePublicKeyHexString(transaction.receiver)
+        ||  !transaction.nonce 
+        ||  isNaN(parseInt(transaction.nonce)) 
+        ||  parseInt(transaction.nonce) < Constants.MINIMUM_TRANSACTION_NONCE
+        ||  transaction.sender == transaction.receiver
+        ||  CommonFunctions.generateTransactionHash(transaction) != transaction.txId
+        ||  !CommonFunctions.verifySignature(transaction.txId, transaction.sender, transaction.signature)
+    ){
+        return callback(null, false);
+    }
+
+    callback(null, transaction);
+
 };

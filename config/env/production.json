@@ -20,5 +20,6 @@
     }
   },
 
-  "express_port": 8080
+  "express_port": 80,
+  "socket_io_port" : 81
 }

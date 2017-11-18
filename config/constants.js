@@ -1,6 +1,9 @@
 // Author : Rijul Luman
 module.exports = Object.freeze({
 
+  "BROADCAST_BLOCK_SOCKET"        : "blockBroadcast",
+  "BROADCAST_TRANSACTION_SOCKET"  : "transactionBroadcast",
+
   "PRIVATE_KEY_LENGTH"  : 32,
   "VALID_HEX_PRIVATE_KEY_LENGTH"  : 64,      // this.PRIVATE_KEY_LENGTH * 2,
   "VALID_HEX_PUBLIC_KEY_LENGTH"   : 66,

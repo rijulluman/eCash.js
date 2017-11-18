@@ -42,6 +42,15 @@ exports.getUserBalance = function(req, res, next){
 };
 
 /**
+ * Accept, verify and add broadcasted block into Blockchain
+ */
+
+exports.acceptBroadcastBlock = function(block){
+    // TODO: Re broadcast ? Will need to handle infinite loop handling
+    console.log("Incoming BroadcastBlock : ", block);
+};
+
+/**
  * Create a Block
  */
 
@@ -178,7 +187,7 @@ var createBlock = function(userData, callback) {
 
             function broadcastGeneratedBlock(cb){
                 broadcastBlock(block);
-                cb(); // Next call should be independent of broadcast failure
+                cb();
             },
 
             function removeTransactionsFromMemory(cb){
@@ -387,6 +396,9 @@ var validateAndParseBlock = function(blockInput, callback){
 };
 
 var broadcastBlock = function(block){
-    //TODO
+    BroadcastMaster.sockets.emit(Constants.BROADCAST_BLOCK_SOCKET, block);
 };
+
+
+
 
