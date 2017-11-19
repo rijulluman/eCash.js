@@ -3,6 +3,7 @@
 // To read/write data to/from Mongo in the desired format. 
 
 var async = require("async");
+var blockController = require("app/controllers/block.server.controller");
 
 var MongoHandler = {
     getCurrentBlockNumber : function(callback){
@@ -439,12 +440,20 @@ var MongoHandler = {
         });
     },
 
-    replaceBlock : function(existingBlock, block){
+    insertNetworkBlock : function(block){
+        blockController.validateAndParseBlock(block, function(isValid, parsedBlock){
+            if(isValid){
+                MongoHandler.insertBlock(parsedBlock);
+            }
+        });
+    },
+
+    validateAndReplaceBlock : function(existingBlock, block){
         // If block with same blockNumber already exists, incoming block will be ignored (Handled by Mongo Unique Indexing)
         if(existingBlock.blockNumber == block.blockNumber){
-            BlockCollection.find({blockNumber : existingBlock.blockNumber, blockHash : existingBlock.blockHash}, {_id : 1}).toArray(function(err, docs){
-                if(docs && docs[0] && docs[0]._id){
-                    BlockCollection.update({_id : ObjectId(docs[0]._id)}, block, function(err, reply){
+            blockController.validateAndParseBlock(block, function(isValid, parsedBlock){
+                if(isValid){
+                    BlockCollection.update({blockNumber : existingBlock.blockNumber, blockHash : existingBlock.blockHash}, parsedBlock, {upsert : true}, function(err, reply){
                         if(err){
                             console.log("Update Mongo Error", err);
                         }
@@ -469,7 +478,10 @@ var MongoHandler = {
                         BlockCollection.find({}, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).limit(Constants.UPDATE_REQUEST_BLOCK_HASH_COUNT).toArray(function(err, docs){
                             var sendObj = {};
                             sendObj[Constants.MY_HASHES] = docs;
-                            BroadcastMaster.sockets.emit(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, sendObj);
+
+                            // TODO : Call 1 random node
+                            // TODO : Save random node name in redis, only update on reply from that node (For Security)
+                            BroadcastMaster.sockets.emit(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, sendObj);        
                             // TODO : Keep control here, add timer and update chain
                         });
                     }

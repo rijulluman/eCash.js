@@ -6,8 +6,12 @@ module.exports = Object.freeze({
   "SOCKET_GET_LATEST_BLOCK_HASHES": "latestBlockHashes",
   "SOCKET_GET_LATEST_BLOCK_REPLY" : "latestBlockHashesReply",
   "FORK"                          : "fork",
+  "UPDATE"                        : "update",
+  "RESET"                         : "reset",
   "MY_HASHES"                     : "myHashes",
-  "MAX_OVERWRITE_BLOCKS"          : 100,
+  "YOUR_UPDATE_STATUS"            : "updateStatus",
+  "NEXT_BLOCKS"                   : "myBlocks",
+  "NETWORK_BLOCK_SHARE_LIMIT"     : 100,
 
   "PRIVATE_KEY_LENGTH"            : 32,
   "VALID_HEX_PRIVATE_KEY_LENGTH"  : 64,      // this.PRIVATE_KEY_LENGTH * 2,

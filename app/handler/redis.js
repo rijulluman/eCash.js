@@ -160,7 +160,7 @@ var RedisHandler = {
     setBlockchainUpdateInProgress : function(callback){
         RedisStoreMA.incr(redisPath.blockchainUpdateInProgress, function(err, reply){         
             if(reply == 1){
-                RedisStoreMA.expire(redisPath.blockchainUpdateInProgress, 5 * Constants.AVERAGE_BLOCK_TIME_MS / 1000); // Limits update fail to 5 blocks, will auto retry after 5 blocks
+                RedisStoreMA.expire(redisPath.blockchainUpdateInProgress, 5 * Constants.AVERAGE_BLOCK_TIME_MS / 1000); // Limits update fail to 5 blocks, will auto retry after 5 blocks, // TODO : will face issues if this fails
                 callback(null, true);
             }
             else{

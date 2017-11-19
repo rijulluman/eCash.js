@@ -64,11 +64,18 @@ server.listen(config.socket_io_port);
 
 var blockController = require("app/controllers/block.server.controller");
 var transactionController = require("app/controllers/transaction.server.controller");
+
+// Assumption : We only connect to trusted nodes
+// TODO : Remove untrusted nodes time-to-time via cron script
+
 BroadcastMaster.on('connection', function (socket) {
   socket.on(Constants.SOCKET_BROADCAST_BLOCK, blockController.acceptBroadcastBlock);
   socket.on(Constants.SOCKET_BROADCAST_TRANSACTION, transactionController.acceptBroadcastTransaction);
   socket.on(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, function(requestData){
-    blockController.sendLatestBlockHashes(requestData, socket);
+    blockController.sendLatestBlocks(requestData, socket);
+  });
+  socket.on(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, function(responseData){
+    blockController.receiveLatestBlocks(responseData, socket);
   });
   // console.log("io.sockets.connected: ", BroadcastMaster.sockets.connected);
   console.log("io.engine.clientsCount: ", BroadcastMaster.engine.clientsCount); // Works !

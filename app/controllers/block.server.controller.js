@@ -53,7 +53,7 @@ exports.acceptBroadcastBlock = function(inputBlock){
         if(isValid){
             MongoHandler.getCurrentBlock(function(err, existingBlock){
                 if(existingBlock.blockNumber == block.blockNumber - 1){
-                    MongoHandler.insertBlock(block);
+                    MongoHandler.insertNetworkBlock(block, function(err, reply){});
                 }
                 else if(existingBlock.blockNumber == block.blockNumber){
                     async.parallel([
@@ -68,7 +68,7 @@ exports.acceptBroadcastBlock = function(inputBlock){
                                 console.log("Mongo/Redis Err: ", errs);
                             }
                             if(results[1] > results[0]){
-                                MongoHandler.replaceBlock(existingBlock, block);        // TODO : Test this case
+                                MongoHandler.validateAndReplaceBlock(existingBlock, block);        // TODO : Test this case
                             }
                             // else{
                             //     // Ignore lower coin stake block
@@ -95,26 +95,66 @@ exports.acceptBroadcastBlock = function(inputBlock){
 /**
  * Send latest block hashes in the Blockchain
  */
-exports.sendLatestBlockHashes = function(requestData, requestSocket){
-    // TODO : Validate request data here
+exports.sendLatestBlocks = function(requestData, requestSocket){
+    // TODO : Validate request data here (and sort decending by Block Number)
     // TODO : Add checkpoints to prevent attacks
     BlockCollection.find({ $or : requestData[Constants.MY_HASHES]}, {_id : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
+        var responseObj = {};
+
         if(err){
             console.log("Mongo Err: ", err);
         }
-        else if(docs.length == 0){
-            // Case : None of the recieved hashes match, send 100 hashes (equi spaced)
+        else if(docs.length == 0){                                                      // CASE RESET : None of the recieved hashes match, send 100 equispaced hashes
+            responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.RESET;
+
+            MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
+                var delta = parseInt(blockNumber/Constants.NETWORK_BLOCK_SHARE_LIMIT);  // Divide into NETWORK_BLOCK_SHARE_LIMIT number of equispaced hashes
+                var blockNumbers = [];
+                for(var i = delta; i <= blockNumber; i += delta){
+                    blockNumbers.push(i);
+                }
+
+                BlockCollection.find({ blockNumber : { $in : blockNumbers } }, { _id : 0, blockNumber : 1, blockHash : 1 }).sort({blockNumber : 1}).limit(Constants.NETWORK_BLOCK_SHARE_LIMIT).toArray(function(err, nextBlocks){
+                    if(nextBlocks && nextBlocks[0] && nextBlocks[0].blockHash){
+                        responseObj[Constants.NEXT_BLOCKS] = nextBlocks;
+                        requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, responseObj);
+                    }
+                });
+            });
+
         }
-        else if(docs.length == requestData[Constants.MY_HASHES].length){
-            // Case : All hashes match, send next blocks
-            docs[0].blockNumber
+        else if(docs.length == requestData[Constants.MY_HASHES].length){            // CASE UPDATE : All hashes match, send next blocks
+            responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.UPDATE;
+
+            BlockCollection.find({ blockNumber : { $gt : docs[0].blockNumber } }, {_id : 0}).sort({blockNumber : 1}).limit(Constants.NETWORK_BLOCK_SHARE_LIMIT).toArray(function(err, nextBlocks){
+                if(nextBlocks && nextBlocks[0] && nextBlocks[0].blockHash){
+                    responseObj[Constants.NEXT_BLOCKS] = nextBlocks;
+                    requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, responseObj);
+                }
+            });
         }
-        else{           //  if(docs.length < requestData[Constants.MY_HASHES].length)
-            // Case FORK : Some of the hashes match (Sender need to update to forked blockchain)
+        else{                                                                       // CASE FORK : Some of the hashes match (Sender need to update to forked blockchain)
+            responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.FORK;
+
+            BlockCollection.find({ blockNumber : { $gt : docs[0].blockNumber } }, {_id : 0}).sort({blockNumber : 1}).limit(Constants.NETWORK_BLOCK_SHARE_LIMIT).toArray(function(err, nextBlocks){
+                if(nextBlocks && nextBlocks[0] && nextBlocks[0].blockHash){
+                    responseObj[Constants.NEXT_BLOCKS] = nextBlocks;
+                    requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, responseObj);
+                }
+            });
         }
     });
-    // requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, reply);
 };
+
+/**
+ * Receive latest block hashes from the network
+ */
+exports.receiveLatestBlocks = function(responseData, responseSocket){
+    // TODO : Validate response data here (and sort assending by Block Number)
+    if(responseData[Constants.YOUR_UPDATE_STATUS] == Constants.UPDATE){
+        
+    }
+}
 
 /**
  * Create a Block
@@ -474,7 +514,7 @@ var validateAndParseBlock = function(blockInput, callback){
 
 var broadcastBlock = function(block){
     validateAndParseBlock(block, function(isValid, parsedBlock){
-        if(parsedBlock){
+        if(isValid){
             BroadcastMaster.sockets.emit(Constants.SOCKET_BROADCAST_BLOCK, parsedBlock);
         }
     });
