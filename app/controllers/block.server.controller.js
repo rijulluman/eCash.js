@@ -45,9 +45,75 @@ exports.getUserBalance = function(req, res, next){
  * Accept, verify and add broadcasted block into Blockchain
  */
 
-exports.acceptBroadcastBlock = function(block){
+exports.acceptBroadcastBlock = function(inputBlock){
     // TODO: Re broadcast ? Will need to handle infinite loop handling
-    console.log("Incoming BroadcastBlock : ", block);
+    // TODO : Make blockNumber unique in Mongo Index
+    console.log("Incoming BroadcastBlock : ", inputBlock);
+    validateAndParseBlock(inputBlock, function(isValid, block){
+        if(isValid){
+            MongoHandler.getCurrentBlock(function(err, existingBlock){
+                if(existingBlock.blockNumber == block.blockNumber - 1){
+                    MongoHandler.insertBlock(block);
+                }
+                else if(existingBlock.blockNumber == block.blockNumber){
+                    async.parallel([
+                            function(cb){
+                                RedisHandler.cachedCoinAge(existingBlock, cb);
+                            },
+                            function(cb){
+                                MongoHandler.calculateCoinAge(userId, suppliedBlockNumber, cb);
+                            },
+                        ], function(errs, results){
+                            if(errs){
+                                console.log("Mongo/Redis Err: ", errs);
+                            }
+                            if(results[1] > results[0]){
+                                MongoHandler.replaceBlock(existingBlock, block);        // TODO : Test this case
+                            }
+                            // else{
+                            //     // Ignore lower coin stake block
+                            // }
+                    });
+                }
+                else if(existingBlock.blockNumber + 1 < block.blockNumber){
+                    MongoHandler.updateBlockchain();
+                }
+                // else{
+                //     // Ignore older block
+                // }
+            });
+        }
+        else if(parsedBlock == Constants.FORK){
+
+        }
+        // else{
+        //     // Ignore invalid block
+        // }
+    });
+};
+
+/**
+ * Send latest block hashes in the Blockchain
+ */
+exports.sendLatestBlockHashes = function(requestData, requestSocket){
+    // TODO : Validate request data here
+    // TODO : Add checkpoints to prevent attacks
+    BlockCollection.find({ $or : requestData[Constants.MY_HASHES]}, {_id : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
+        if(err){
+            console.log("Mongo Err: ", err);
+        }
+        else if(docs.length == 0){
+            // Case : None of the recieved hashes match, send 100 hashes (equi spaced)
+        }
+        else if(docs.length == requestData[Constants.MY_HASHES].length){
+            // Case : All hashes match, send next blocks
+            docs[0].blockNumber
+        }
+        else{           //  if(docs.length < requestData[Constants.MY_HASHES].length)
+            // Case FORK : Some of the hashes match (Sender need to update to forked blockchain)
+        }
+    });
+    // requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, reply);
 };
 
 /**
@@ -84,6 +150,7 @@ exports.create100Blocks = function(req, res) {
 
 var createBlock = function(userData, callback) {
     // TODO :  Call from Cron Script
+    // TODO : Add block internal variable names to Constants
     var block = {
       blockNumber           : 0,
       nonce                 : 0,
@@ -177,11 +244,7 @@ var createBlock = function(userData, callback) {
             },
 
             function addBlockToDb(cb){
-                BlockCollection.insert(block, function(err, reply){
-                    if(err){
-                        console.log("Insert Mongo Error", err);
-                    }
-                });
+                MongoHandler.insertBlock(block);
                 cb();
             },
 
@@ -374,6 +437,16 @@ var validateAndParseBlock = function(blockInput, callback){
                     return callback(true, block);
                 }
 
+                // if(!validatePreviousBlockHash){
+                //     var hexadecimal = /^[0-9A-F]+$/i;
+                //     if(!isNaN(block.timestamp) && block.previousBlockHash.length == 64 && hexadecimal.test(block.previousBlockHash)){
+                //         return callback(true, block);
+                //     }
+                //     else{
+                //         return callback(false, null);
+                //     }
+                // }
+
                 BlockCollection.find({ blockNumber : block.blockNumber - 1 }, {_id : 0, blockNumber : 1, blockHash : 1, timestamp : 1}).limit(1).toArray(function(errs, docs){
                     var previousBlock = docs[0];
                     if(
@@ -382,6 +455,10 @@ var validateAndParseBlock = function(blockInput, callback){
                         // &&  block.timestamp - previousBlock.timestamp <= 2 * Constants.AVERAGE_BLOCK_TIME_MS         // TODO : Uncomment
                     ){
                         return callback(true, block);
+                    }
+
+                    if(previousBlock.blockHash != block.previousBlockHash){
+                        return callback(false, Constants.FORK);
                     }
                     
                     return callback(false, null);
@@ -396,7 +473,11 @@ var validateAndParseBlock = function(blockInput, callback){
 };
 
 var broadcastBlock = function(block){
-    BroadcastMaster.sockets.emit(Constants.BROADCAST_BLOCK_SOCKET, block);
+    validateAndParseBlock(block, function(isValid, parsedBlock){
+        if(parsedBlock){
+            BroadcastMaster.sockets.emit(Constants.SOCKET_BROADCAST_BLOCK, parsedBlock);
+        }
+    });
 };
 
 

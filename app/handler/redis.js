@@ -125,6 +125,56 @@ var RedisHandler = {
         });
     },
 
+    cachedCoinAge : function(block, callback){
+        RedisStoreSL.get(redisPath.coinAge + block.blockHash , function(err, reply){
+            if(err){
+                callback(err);  
+            }
+            else if(reply == null){
+                MongoHandler.calculateCoinAge(block.blockCreatorId, block.blockNumber, function(err, coinAge){
+                    RedisStoreMA.setex(redisPath.coinAge + block.blockHash, Constants.BLOCK_COIN_AGE_REDIS_TTL, ""+coinAge, function(err, reply){
+                        callback(null, coinAge);
+                    });   
+                });
+            }
+            else{
+                callback(null, Number(reply));
+            }
+        });
+    },
+
+    isBlockchainUpdateInProgress : function(callback){
+        RedisStoreSL.get(redisPath.blockchainUpdateInProgress , function(err, reply){
+            if(err){
+                callback(err);  
+            }
+            if(reply){
+                callback(null, true);
+            }
+            else{
+                callback(null, false);
+            }
+        });
+    },
+
+    setBlockchainUpdateInProgress : function(callback){
+        RedisStoreMA.incr(redisPath.blockchainUpdateInProgress, function(err, reply){         
+            if(reply == 1){
+                RedisStoreMA.expire(redisPath.blockchainUpdateInProgress, 5 * Constants.AVERAGE_BLOCK_TIME_MS / 1000); // Limits update fail to 5 blocks, will auto retry after 5 blocks
+                callback(null, true);
+            }
+            else{
+                callback(err, false);
+            }
+        });
+    },
+
+    resetBlockchainUpdateInProgress : function(){
+        RedisStoreMA.del(redisPath.blockchainUpdateInProgress, function(err, reply){
+            // callback(err);
+        });
+    },
+
   
 //End of export   
 }

@@ -65,8 +65,11 @@ server.listen(config.socket_io_port);
 var blockController = require("app/controllers/block.server.controller");
 var transactionController = require("app/controllers/transaction.server.controller");
 BroadcastMaster.on('connection', function (socket) {
-  socket.on(Constants.BROADCAST_BLOCK_SOCKET, blockController.acceptBroadcastBlock);
-  socket.on(Constants.BROADCAST_TRANSACTION_SOCKET, transactionController.acceptBroadcastTransaction);
+  socket.on(Constants.SOCKET_BROADCAST_BLOCK, blockController.acceptBroadcastBlock);
+  socket.on(Constants.SOCKET_BROADCAST_TRANSACTION, transactionController.acceptBroadcastTransaction);
+  socket.on(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, function(requestData){
+    blockController.sendLatestBlockHashes(requestData, socket);
+  });
   // console.log("io.sockets.connected: ", BroadcastMaster.sockets.connected);
   console.log("io.engine.clientsCount: ", BroadcastMaster.engine.clientsCount); // Works !
 });

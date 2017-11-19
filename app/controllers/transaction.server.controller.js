@@ -46,6 +46,7 @@ exports.read = function(req, res) {
 };
 
 exports.create = function (req, res, next) {
+    // TODO : Add transaction internal variable names to Constants
     var transaction = {
         txId        : "",   // Unique Hash for this transaction
         sender      : "",
@@ -147,26 +148,29 @@ exports.acceptBroadcastTransaction = function(transaction){
 var addUnconfirmedTransaction = function(transaction){
     // When creating a block, we check if transaction exists in blockchain
     // TTL will be updated incase Transaction already exists in Redis
-    validateAndParseTransaction(transaction, function(err, validatedTransaction){
-        if(validatedTransaction){
+    validateAndParseTransaction(transaction, function(isValid, validatedTransaction){
+        if(isValid){
             RedisHandler.addUnconfirmedTransaction(validatedTransaction, function (err, reply) {
                 // Transaction Added
             }); 
+        }
+        else{
+            console.log("Invalid")
         }
     });
 };
 
 var broadcast = function (transaction) {
-    validateAndParseTransaction(transaction, function(err, validatedTransaction){
-        if(validatedTransaction){
-            BroadcastMaster.sockets.emit(Constants.BROADCAST_TRANSACTION_SOCKET, validatedTransaction);
+    validateAndParseTransaction(transaction, function(isValid, validatedTransaction){
+        if(isValid){
+            BroadcastMaster.sockets.emit(Constants.SOCKET_BROADCAST_TRANSACTION, validatedTransaction);
         }
     });
 };
 
 var validateAndParseTransaction = function (transactionInput, callback) {
     if(!transactionInput || typeof(transactionInput) != "object" || Object.keys(transactionInput).length < 8){
-        return callback(null, false);
+        return callback(false, null);
     }
 
     var transaction = {
@@ -194,9 +198,9 @@ var validateAndParseTransaction = function (transactionInput, callback) {
         ||  CommonFunctions.generateTransactionHash(transaction) != transaction.txId
         ||  !CommonFunctions.verifySignature(transaction.txId, transaction.sender, transaction.signature)
     ){
-        return callback(null, false);
+        return callback(false, null);
     }
 
-    callback(null, transaction);
+    callback(true, transaction);
 
 };

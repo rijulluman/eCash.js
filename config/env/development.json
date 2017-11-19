@@ -6,10 +6,6 @@
   "mongo_coll_target"  : "targets",
 
   "redis" :	{
-    "sessionStore" : {
-      "host"    :    "127.0.0.1",
-      "port"    :    6379
-    },
     "MA" : {
       "host"    :    "127.0.0.1",
       "port"    :    6379

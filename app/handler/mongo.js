@@ -12,6 +12,13 @@ var MongoHandler = {
         });
     },
 
+    getCurrentBlock : function(callback){
+        BlockCollection.find({}, {_id : 0}).sort({"blockNumber" : -1}).limit(1).toArray(function(err, docs){
+            var block = docs[0] ? docs[0] : null;
+            callback(null, block);
+        });
+    },
+
     setAllBlockTargets : function(callback){
         MongoHandler.getCurrentBlockNumber(function(err, currentBlockNumber){
             TargetCollection.find({}).toArray(function(err, docs){
@@ -419,6 +426,61 @@ var MongoHandler = {
                 callback(null, totalStake);
         });
     },
+
+    insertBlock : function(block){
+        // If block with same blockNumber already exists, incoming block will be ignored (Handled by Mongo Unique Indexing)
+        BlockCollection.insert(block, function(err, reply){
+            if(err){
+                console.log("Insert Mongo Error", err);
+            }
+            else{
+                // TODO: Remove Unconfirmed Transactions from Redis & zlist
+            }
+        });
+    },
+
+    replaceBlock : function(existingBlock, block){
+        // If block with same blockNumber already exists, incoming block will be ignored (Handled by Mongo Unique Indexing)
+        if(existingBlock.blockNumber == block.blockNumber){
+            BlockCollection.find({blockNumber : existingBlock.blockNumber, blockHash : existingBlock.blockHash}, {_id : 1}).toArray(function(err, docs){
+                if(docs && docs[0] && docs[0]._id){
+                    BlockCollection.update({_id : ObjectId(docs[0]._id)}, block, function(err, reply){
+                        if(err){
+                            console.log("Update Mongo Error", err);
+                        }
+                    });
+                }
+            });
+            // TODO : Remove old block transactions and Add new block transactions to Unconfirmed Transactions Redis and Zlist
+        }
+    },
+
+    // getLatestBlockHashes : function(count, callback){
+    //     BlockCollection.find({}, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).limit(count).toArray(function(err, docs){
+    //         callback(null, docs);
+    //     });
+    // },
+
+    updateBlockchain : function(){
+        RedisHandler.isBlockchainUpdateInProgress(function(err, inProgress){
+            if(!inProgress){
+                RedisHandler.setBlockchainUpdateInProgress(function(err, set){
+                    if(set){
+                        BlockCollection.find({}, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).limit(Constants.UPDATE_REQUEST_BLOCK_HASH_COUNT).toArray(function(err, docs){
+                            var sendObj = {};
+                            sendObj[Constants.MY_HASHES] = docs;
+                            BroadcastMaster.sockets.emit(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, sendObj);
+                            // TODO : Keep control here, add timer and update chain
+                        });
+                    }
+                });
+            }
+            // else{
+            //     // Skip, since blochchain update already in progress
+            // }
+        });
+        
+    }
 };
 
 module.exports = MongoHandler;
