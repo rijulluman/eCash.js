@@ -160,7 +160,8 @@ var RedisHandler = {
     setBlockchainUpdateInProgress : function(callback){
         RedisStoreMA.incr(redisPath.blockchainUpdateInProgress, function(err, reply){         
             if(reply == 1){
-                RedisStoreMA.expire(redisPath.blockchainUpdateInProgress, 5 * Constants.AVERAGE_BLOCK_TIME_MS / 1000); // Limits update fail to 5 blocks, will auto retry after 5 blocks, // TODO : will face issues if this fails
+                RedisStoreMA.expire(redisPath.blockchainUpdateInProgress, Constants.BLOCKCHAIN_UPDATE_HOLD_TTL_MULTIPLIER * Constants.AVERAGE_BLOCK_TIME_MS / 1000); // Limits update fail to BLOCKCHAIN_UPDATE_HOLD_TTL_MULTIPLIER blocks, will auto retry after BLOCKCHAIN_UPDATE_HOLD_TTL_MULTIPLIER blocks, 
+                // TODO : will face issues if expire set fails, add fix
                 callback(null, true);
             }
             else{
@@ -173,7 +174,20 @@ var RedisHandler = {
         RedisStoreMA.del(redisPath.blockchainUpdateInProgress, function(err, reply){
             // callback(err);
         });
+        RedisStoreMA.del(redisPath.setUpdateSocketId, function(err, reply){
+            // callback(err);
+        });
     },
+
+    setUpdaterDetails : function(socketId, callback){
+        RedisStoreMA.setex(redisPath.setUpdateSocketId, Constants.BLOCKCHAIN_UPDATE_HOLD_TTL_MULTIPLIER * Constants.AVERAGE_BLOCK_TIME_MS / 1000, socketId, function(err, reply){
+            callback(err);
+        }); 
+    },
+
+    getUpdaterDetails : function(callback){
+        RedisStoreSL.get(redisPath.setUpdateSocketId, callback);
+    }
 
   
 //End of export   

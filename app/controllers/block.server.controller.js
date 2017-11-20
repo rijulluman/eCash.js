@@ -83,9 +83,9 @@ exports.acceptBroadcastBlock = function(inputBlock){
                 // }
             });
         }
-        else if(parsedBlock == Constants.FORK){
-
-        }
+        // else if(block == Constants.FORK){
+        //     console.log("In Fork");
+        // }
         // else{
         //     // Ignore invalid block
         // }
@@ -98,51 +98,47 @@ exports.acceptBroadcastBlock = function(inputBlock){
 exports.sendLatestBlocks = function(requestData, requestSocket){
     // TODO : Validate request data here (and sort decending by Block Number)
     // TODO : Add checkpoints to prevent attacks
-    BlockCollection.find({ $or : requestData[Constants.MY_HASHES]}, {_id : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
-        var responseObj = {};
+    MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
+        BlockCollection.find({ $or : requestData[Constants.MY_HASHES]}, {_id : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
+            var findQuery = {};
+            var returnQuery = {};
+            var responseObj = {};
+            responseObj[Constants.LAST_BLOCK_NUMBER] = blockNumber;
 
-        if(err){
-            console.log("Mongo Err: ", err);
-        }
-        else if(docs.length == 0){                                                      // CASE RESET : None of the recieved hashes match, send 100 equispaced hashes
-            responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.RESET;
+            if(err){
+                console.log("Mongo Err: ", err);
+            }
+            else if(docs.length == 0){                                                      // CASE RESET : None of the recieved hashes match, send 100 equispaced hashes
+                responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.RESET;
 
-            MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
                 var delta = parseInt(blockNumber/Constants.NETWORK_BLOCK_SHARE_LIMIT);  // Divide into NETWORK_BLOCK_SHARE_LIMIT number of equispaced hashes
                 var blockNumbers = [];
                 for(var i = delta; i <= blockNumber; i += delta){
                     blockNumbers.push(i);
                 }
 
-                BlockCollection.find({ blockNumber : { $in : blockNumbers } }, { _id : 0, blockNumber : 1, blockHash : 1 }).sort({blockNumber : 1}).limit(Constants.NETWORK_BLOCK_SHARE_LIMIT).toArray(function(err, nextBlocks){
-                    if(nextBlocks && nextBlocks[0] && nextBlocks[0].blockHash){
-                        responseObj[Constants.NEXT_BLOCKS] = nextBlocks;
-                        requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, responseObj);
-                    }
-                });
-            });
+                findQuery = { blockNumber : { $in : blockNumbers } };
+                returnQuery = { _id : 0, blockNumber : 1, blockHash : 1 };
 
-        }
-        else if(docs.length == requestData[Constants.MY_HASHES].length){            // CASE UPDATE : All hashes match, send next blocks
-            responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.UPDATE;
+            }
+            else if(docs.length == requestData[Constants.MY_HASHES].length){            // CASE UPDATE : All hashes match, send next blocks
+                responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.UPDATE;
+                findQuery = { blockNumber : { $gt : docs[0].blockNumber } }
+                returnQuery = {_id : 0};
+            }
+            else{                                                                       // CASE FORK : Some of the hashes match (Sender need to update to forked blockchain)
+                responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.FORK;
+                findQuery = { blockNumber : { $gt : docs[0].blockNumber } };
+                returnQuery = {_id : 0};
+            }
 
-            BlockCollection.find({ blockNumber : { $gt : docs[0].blockNumber } }, {_id : 0}).sort({blockNumber : 1}).limit(Constants.NETWORK_BLOCK_SHARE_LIMIT).toArray(function(err, nextBlocks){
+            BlockCollection.find(findQuery, returnQuery).sort({blockNumber : 1}).limit(Constants.NETWORK_BLOCK_SHARE_LIMIT).toArray(function(err, nextBlocks){
                 if(nextBlocks && nextBlocks[0] && nextBlocks[0].blockHash){
                     responseObj[Constants.NEXT_BLOCKS] = nextBlocks;
                     requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, responseObj);
                 }
             });
-        }
-        else{                                                                       // CASE FORK : Some of the hashes match (Sender need to update to forked blockchain)
-            responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.FORK;
-
-            BlockCollection.find({ blockNumber : { $gt : docs[0].blockNumber } }, {_id : 0}).sort({blockNumber : 1}).limit(Constants.NETWORK_BLOCK_SHARE_LIMIT).toArray(function(err, nextBlocks){
-                if(nextBlocks && nextBlocks[0] && nextBlocks[0].blockHash){
-                    responseObj[Constants.NEXT_BLOCKS] = nextBlocks;
-                    requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, responseObj);
-                }
-            });
-        }
+        });
     });
 };
 
@@ -151,9 +147,73 @@ exports.sendLatestBlocks = function(requestData, requestSocket){
  */
 exports.receiveLatestBlocks = function(responseData, responseSocket){
     // TODO : Validate response data here (and sort assending by Block Number)
-    if(responseData[Constants.YOUR_UPDATE_STATUS] == Constants.UPDATE){
-        
-    }
+    // TODO : Add redis check if we actually requested for this update
+    // TODO : Reset Redis update ttl, so that update continues
+    async.parallel([
+            function(cb){
+                RedisHandler.isBlockchainUpdateInProgress(cb);
+            },
+            function(cb){
+                RedisHandler.getUpdaterDetails(cb);
+            },
+        ], function(errs, results){
+            if(results[0] && results[1] == responseSocket.id){
+                if(responseData[Constants.YOUR_UPDATE_STATUS] == Constants.UPDATE){
+                    MongoHandler.insertNetworkBlocks(responseData[Constants.NEXT_BLOCKS], function(){
+                        MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
+                            if(blockNumber < parseInt(responseObj[Constants.LAST_BLOCK_NUMBER]) ){
+                                updateBlockchainFromBlock(blockNumber);             // Recursive call till we reach the latest block
+                            }
+                            else{
+                                RedisHandler.resetBlockchainUpdateInProgress();
+                            }
+                        });
+                    });
+                }
+                else if(responseObj[Constants.YOUR_UPDATE_STATUS] == Constants.FORK){
+                    var updateBlocks = [];
+                    MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
+                        for(var i = 0; i < responseData[Constants.NEXT_BLOCKS].length; i++){
+                            if(responseData[Constants.NEXT_BLOCKS][i].blockNumber <= blockNumber){
+                                updateBlocks.push(responseData[Constants.NEXT_BLOCKS][i]);
+                                responseData[Constants.NEXT_BLOCKS].splice(i, 1);
+                                i--;
+                            }
+                        }
+
+                        MongoHandler.updateNetworkBlocks(updateBlocks, function(){
+                            MongoHandler.insertNetworkBlocks(responseData[Constants.NEXT_BLOCKS], function(){
+                                RedisHandler.resetBlockchainUpdateInProgress();
+                            });
+                        });
+                    });
+                }
+                else if(responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.RESET){
+                    var blockNumbers = [];
+                    var blockHashes = [];
+                    responseData[Constants.NEXT_BLOCKS].forEach(function(block){
+                        blockNumbers.push(block.blockNumber);
+                        blockHashes.push(block.blockHash);
+                    });
+                    BlockCollection.find({ blockNumber : { $in : blockNumbers }, blockHash : { $in : blockHashes } }, { _id : 0, blockNumber : 1, blockHash : 1 }).sort({blockNumber : -1}).toArray(function(err, matchedBlocks){
+                        if(matchedBlocks && matchedBlocks.length && matchedBlocks[0] && matchedBlocks[0].blockHash){
+                            updateBlockchainFromBlock(matchedBlocks[0].blockNumber);    // Recursive call till be reach a forking point
+                        }
+                        else if(matchedBlocks.length == 0){
+                            // If We have checkpoints, checkpoint number will be passed from here
+                            updateBlockchainFromBlock(0);   // Since none of the blocks match
+                        }
+                        else{
+                            RedisHandler.resetBlockchainUpdateInProgress();
+                        }
+                    });
+                }
+                else{
+                    // Invalid case
+                    RedisHandler.resetBlockchainUpdateInProgress();
+                }
+            }
+    });
 }
 
 /**
@@ -284,7 +344,7 @@ var createBlock = function(userData, callback) {
             },
 
             function addBlockToDb(cb){
-                MongoHandler.insertBlock(block);
+                MongoHandler.insertBlock(block, function(){});
                 cb();
             },
 
@@ -375,22 +435,29 @@ var removeTransactionsAlreadyInBlockChain = function(transactions, callback){
 };
 
 var validateAndParseBlock = function(blockInput, callback){
-    var block = {
-      blockNumber           : parseInt(blockInput.blockNumber),
-      nonce                 : parseInt(blockInput.nonce),
-      blockCreatorId        : blockInput.blockCreatorId.toLowerCase(),
-      previousBlockHash     : blockInput.previousBlockHash.toLowerCase(),
-      proofHash             : blockInput.proofHash.toLowerCase(),
-      timestamp             : parseInt(blockInput.timestamp),
-      totalAmount           : Number(blockInput.totalAmount),
-      totalFees             : Number(blockInput.totalFees),
-      transactionCount      : parseInt(blockInput.transactionCount),
-      transactionHash       : blockInput.transactionHash.toLowerCase(),
-      transactionSignature  : blockInput.transactionSignature.toLowerCase(),
-      blockHash             : blockInput.blockHash.toLowerCase(),
-      blockSignature        : blockInput.blockSignature.toLowerCase(),
-      transactions          : blockInput.transactions
-    };
+    var block = {};
+
+    try{
+        block = {
+          blockNumber           : parseInt(blockInput.blockNumber),
+          nonce                 : parseInt(blockInput.nonce),
+          blockCreatorId        : blockInput.blockCreatorId.toLowerCase(),
+          previousBlockHash     : blockInput.previousBlockHash.toLowerCase(),
+          proofHash             : blockInput.proofHash.toLowerCase(),
+          timestamp             : parseInt(blockInput.timestamp),
+          totalAmount           : Number(blockInput.totalAmount),
+          totalFees             : Number(blockInput.totalFees),
+          transactionCount      : parseInt(blockInput.transactionCount),
+          transactionHash       : blockInput.transactionHash.toLowerCase(),
+          transactionSignature  : blockInput.transactionSignature.toLowerCase(),
+          blockHash             : blockInput.blockHash.toLowerCase(),
+          blockSignature        : blockInput.blockSignature.toLowerCase(),
+          transactions          : blockInput.transactions
+        };
+    }
+    catch(e){
+        return callback(false, null);
+    }
 
     if(
             block.blockNumber < 0

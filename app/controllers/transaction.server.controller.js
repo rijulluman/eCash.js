@@ -173,16 +173,23 @@ var validateAndParseTransaction = function (transactionInput, callback) {
         return callback(false, null);
     }
 
-    var transaction = {
-        txId        : transactionInput.txId.toLowerCase(),
-        sender      : transactionInput.sender.toLowerCase(),
-        receiver    : transactionInput.receiver.toLowerCase(),
-        amount      : validateCoinValue(transactionInput.amount),
-        fees        : validateCoinValue(transactionInput.fees),
-        deadline    : parseInt(transactionInput.deadline),
-        nonce       : parseInt(transactionInput.nonce),
-        signature   : transactionInput.signature.toLowerCase()
-    };
+    var transaction = {};
+
+    try{
+        transaction = {
+            txId        : transactionInput.txId.toLowerCase(),
+            sender      : transactionInput.sender.toLowerCase(),
+            receiver    : transactionInput.receiver.toLowerCase(),
+            amount      : validateCoinValue(transactionInput.amount),
+            fees        : validateCoinValue(transactionInput.fees),
+            deadline    : parseInt(transactionInput.deadline),
+            nonce       : parseInt(transactionInput.nonce),
+            signature   : transactionInput.signature.toLowerCase()
+        };
+    }
+    catch(e){
+        return callback(false, null);
+    }
 
     if(
             !transaction.amount

@@ -11,6 +11,7 @@ module.exports = Object.freeze({
   "MY_HASHES"                     : "myHashes",
   "YOUR_UPDATE_STATUS"            : "updateStatus",
   "NEXT_BLOCKS"                   : "myBlocks",
+  "LAST_BLOCK_NUMBER"             : "lastBlock",
   "NETWORK_BLOCK_SHARE_LIMIT"     : 100,
 
   "PRIVATE_KEY_LENGTH"            : 32,
@@ -29,6 +30,7 @@ module.exports = Object.freeze({
   "AVERAGE_BLOCK_TIME_MS"         : 6000,     // 60000 * 1,     // 1 min
   "CURRENT_BLOCK_REDIS_TTL"       : 200,      // Idealy a little higer than the average block time
   "BLOCK_COIN_AGE_REDIS_TTL"      : 200,      // Idealy a little higer than the average block time
+  "BLOCKCHAIN_UPDATE_HOLD_TTL_MULTIPLIER" : 3,
   "UNCONFIRMED_TRANSACTION_TTL_SECONDS_PER_BLOCK" : 3600,  // Seconds per block difference
   "UPDATE_REQUEST_BLOCK_HASH_COUNT" : 10,
 
@@ -36,7 +38,8 @@ module.exports = Object.freeze({
     "unconfirmedTransaction"        : "UT.",
     "sortedUnconfirmedTransaction"  : "SUT",
     "currentBlock"                  : "CB",
-    "coinAge"                       : "AGE."
+    "coinAge"                       : "AGE.",
+    "setUpdateSocketId"             : "UID"
   }
 
 });

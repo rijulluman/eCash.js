@@ -428,7 +428,7 @@ var MongoHandler = {
         });
     },
 
-    insertBlock : function(block){
+    insertBlock : function(block, callback){
         // If block with same blockNumber already exists, incoming block will be ignored (Handled by Mongo Unique Indexing)
         BlockCollection.insert(block, function(err, reply){
             if(err){
@@ -437,14 +437,42 @@ var MongoHandler = {
             else{
                 // TODO: Remove Unconfirmed Transactions from Redis & zlist
             }
+            callback(err);
         });
     },
 
-    insertNetworkBlock : function(block){
+    insertNetworkBlock : function(block, callback){
         blockController.validateAndParseBlock(block, function(isValid, parsedBlock){
             if(isValid){
-                MongoHandler.insertBlock(parsedBlock);
+                MongoHandler.insertBlock(parsedBlock, callback);
             }
+        });
+    },
+
+    insertNetworkBlocks : function(blocks, callback){
+        // TODO: Sort blocks in assending order by blockNumber
+        async.eachSeries(blocks, function(block, cb){
+                MongoHandler.insertNetworkBlock(block, cb);
+            }, function(errs, results){
+                callback();
+        });
+    },
+
+    updateNetworkBlocks : function(blocks, callback){
+        // TODO: Sort blocks in assending order by blockNumber
+        async.eachSeries(blocks, function(block, cb){
+                blockController.validateAndParseBlock(block, function(isValid, parsedBlock){
+                    if(isValid){
+                        BlockCollection.update({blockNumber : block.blockNumber}, parsedBlock, {upsert : true}, function(err, reply){
+                            if(err){
+                                console.log("Update Mongo Error", err);
+                            }
+                            cb();
+                        });
+                    }
+                });
+            }, function(errs, results){
+                callback();
         });
     },
 
@@ -478,11 +506,7 @@ var MongoHandler = {
                         BlockCollection.find({}, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).limit(Constants.UPDATE_REQUEST_BLOCK_HASH_COUNT).toArray(function(err, docs){
                             var sendObj = {};
                             sendObj[Constants.MY_HASHES] = docs;
-
-                            // TODO : Call 1 random node
-                            // TODO : Save random node name in redis, only update on reply from that node (For Security)
-                            BroadcastMaster.sockets.emit(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, sendObj);        
-                            // TODO : Keep control here, add timer and update chain
+                            MongoHandler.sendDataToRandomNodeInNetwork(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, sendObj);
                         });
                     }
                 });
@@ -492,7 +516,31 @@ var MongoHandler = {
             // }
         });
         
-    }
+    },
+
+    updateBlockchainFromBlock : function(blockNumber){
+        BlockCollection.find({ blockNumber : { $gt : blockNumber, $lte : blockNumber + Constants.UPDATE_REQUEST_BLOCK_HASH_COUNT} }, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).toArray(function(err, docs){
+            var sendObj = {};
+            sendObj[Constants.MY_HASHES] = docs;
+            MongoHandler.sendDataToRandomNodeInNetwork(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, sendObj);
+        });
+    },
+
+    sendDataToRandomNodeInNetwork : function(socketCommand, data){
+        var socket = null;
+        while(socket == null && Object.keys(BroadcastMaster.sockets.connected).length){
+            var sockets = Object.keys(BroadcastMaster.sockets.connected);
+            var randomIndex = Math.floor(Math.random() * (sockets.length + 1));
+            socket = BroadcastMaster.sockets.connected[sockets[randomIndex]];
+        }
+        
+        if(socket){
+            RedisStoreMA.expire(redisPath.blockchainUpdateInProgress, Constants.BLOCKCHAIN_UPDATE_HOLD_TTL_MULTIPLIER * Constants.AVERAGE_BLOCK_TIME_MS / 1000);    // Extend update TTL
+            RedisHandler.setUpdaterDetails(socket.id, function(err, reply){         // Save random node name in redis, only update on reply from that node (For Security)
+                socket.emit(socketCommand, data);
+            });
+        }
+    },
 };
 
 module.exports = MongoHandler;
