@@ -527,6 +527,7 @@ var MongoHandler = {
     },
 
     sendDataToRandomNodeInNetwork : function(socketCommand, data){
+        // Currently only incoming nodes used for random connections
         var socket = null;
         while(socket == null && Object.keys(BroadcastMaster.sockets.connected).length){
             var sockets = Object.keys(BroadcastMaster.sockets.connected);

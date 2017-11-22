@@ -147,8 +147,9 @@ exports.sendLatestBlocks = function(requestData, requestSocket){
  */
 exports.receiveLatestBlocks = function(responseData, responseSocket){
     // TODO : Validate response data here (and sort assending by Block Number)
-    // TODO : Add redis check if we actually requested for this update
     // TODO : Reset Redis update ttl, so that update continues
+
+    // TODO : Remove all balance and difficulty entries on FORK !
     async.parallel([
             function(cb){
                 RedisHandler.isBlockchainUpdateInProgress(cb);
@@ -183,7 +184,14 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
 
                         MongoHandler.updateNetworkBlocks(updateBlocks, function(){
                             MongoHandler.insertNetworkBlocks(responseData[Constants.NEXT_BLOCKS], function(){
-                                RedisHandler.resetBlockchainUpdateInProgress();
+                                MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
+                                    if(blockNumber < parseInt(responseObj[Constants.LAST_BLOCK_NUMBER]) ){
+                                        updateBlockchainFromBlock(blockNumber);             // Recursive call till we reach the latest block
+                                    }
+                                    else{
+                                        RedisHandler.resetBlockchainUpdateInProgress();
+                                    }
+                                });
                             });
                         });
                     });

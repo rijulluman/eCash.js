@@ -60,6 +60,7 @@ app.all('*', function(req, res, next) {
  */
 var server = require('http').Server(app);
 global.BroadcastMaster = require('socket.io')(server);    // var io = 
+global.OutgoingSockets = [];
 server.listen(config.socket_io_port);
 
 var blockController = require("app/controllers/block.server.controller");
@@ -67,7 +68,6 @@ var transactionController = require("app/controllers/transaction.server.controll
 
 // Assumption : We only connect to trusted nodes
 // TODO : Remove untrusted nodes time-to-time via cron script
-
 BroadcastMaster.on('connection', function (socket) {
   socket.on(Constants.SOCKET_BROADCAST_BLOCK, blockController.acceptBroadcastBlock);
   socket.on(Constants.SOCKET_BROADCAST_TRANSACTION, transactionController.acceptBroadcastTransaction);
@@ -78,7 +78,22 @@ BroadcastMaster.on('connection', function (socket) {
     blockController.receiveLatestBlocks(responseData, socket);
   });
   // console.log("io.sockets.connected: ", Object.keys(BroadcastMaster.sockets.connected));
-  console.log("io.engine.clientsCount: ", BroadcastMaster.engine.clientsCount); // Works !
+  // console.log("io.engine.clientsCount: ", BroadcastMaster.engine.clientsCount); // Works !
+});
+
+// Make connectiosn to some default nodes
+var ioc = require('socket.io-client');
+config.default_broadcast_sockets.forEach(function(url){
+  var socket = ioc.connect(url);
+  socket.on(Constants.SOCKET_BROADCAST_BLOCK, blockController.acceptBroadcastBlock);
+  socket.on(Constants.SOCKET_BROADCAST_TRANSACTION, transactionController.acceptBroadcastTransaction);
+  socket.on(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, function(requestData){
+    blockController.sendLatestBlocks(requestData, socket);
+  });
+  socket.on(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, function(responseData){
+    blockController.receiveLatestBlocks(responseData, socket);
+  });
+  OutgoingSockets.push(socket);
 });
 
 

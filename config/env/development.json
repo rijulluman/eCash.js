@@ -16,6 +16,7 @@
     }
   },
 
+  "default_broadcast_sockets" : ["http://localhost:3001"],
   "express_port": 3000,
   "socket_io_port" : 3001
 }
