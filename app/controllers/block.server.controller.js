@@ -586,6 +586,9 @@ var broadcastBlock = function(block){
     validateAndParseBlock(block, function(isValid, parsedBlock){
         if(isValid){
             BroadcastMaster.sockets.emit(Constants.SOCKET_BROADCAST_BLOCK, parsedBlock);
+            OutgoingSockets.forEach(function(socket){
+                socket.emit(Constants.SOCKET_BROADCAST_BLOCK, parsedBlock);
+            });
         }
     });
 };

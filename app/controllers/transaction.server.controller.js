@@ -164,6 +164,9 @@ var broadcast = function (transaction) {
     validateAndParseTransaction(transaction, function(isValid, validatedTransaction){
         if(isValid){
             BroadcastMaster.sockets.emit(Constants.SOCKET_BROADCAST_TRANSACTION, validatedTransaction);
+            OutgoingSockets.forEach(function(socket){
+                socket.emit(Constants.SOCKET_BROADCAST_TRANSACTION, validatedTransaction);
+            });
         }
     });
 };
