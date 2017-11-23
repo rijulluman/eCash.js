@@ -48,7 +48,7 @@ exports.getUserBalance = function(req, res, next){
 exports.acceptBroadcastBlock = function(block){
     // TODO: Re broadcast ? Will need to handle infinite loop handling
     // TODO : Make blockNumber unique in Mongo Index
-    console.log("Incoming BroadcastBlock : ", block);
+    // console.log("Incoming BroadcastBlock : ", block);
     MongoHandler.getCurrentBlock(function(err, existingBlock){
         if(existingBlock.blockNumber == block.blockNumber - 1){
             MongoHandler.insertNetworkBlock(block, function(err, reply){});
@@ -88,58 +88,57 @@ exports.acceptBroadcastBlock = function(block){
 exports.sendLatestBlocks = function(requestData, requestSocket){
     // TODO : Validate request data here (and sort decending by Block Number)
     // TODO : Add checkpoints to prevent attacks
+    if(requestData[Constants.MY_HASHES].length){
+        MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
+            var blockNumbers = [];
+            var blockHashes = [];
+            requestData[Constants.MY_HASHES].forEach(function(block){
+                blockNumbers.push(block.blockNumber);
+                blockHashes.push(block.blockHash);
+            });
+            BlockCollection.find({ blockNumber : { $in : blockNumbers }, blockHash : { $in : blockHashes } }, {_id : 1, blockNumber : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
+                var findQuery = {};
+                var returnQuery = {};
+                var responseObj = {};
+                responseObj[Constants.LAST_BLOCK_NUMBER] = blockNumber;
 
-    console.log("requestData", requestData);
+                if(err){
+                    console.log("Mongo Err: ", err);
+                }
+                else if(docs.length == 0){                                                      // CASE RESET : None of the recieved hashes match, send 100 equispaced hashes
+                    responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.RESET;
 
-    MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
-        var blockNumbers = [];
-        var blockHashes = [];
-        requestData[Constants.MY_HASHES].forEach(function(block){
-            blockNumbers.push(block.blockNumber);
-            blockHashes.push(block.blockHash);
-        });
-        BlockCollection.find({ blockNumber : { $in : blockNumbers }, blockHash : { $in : blockHashes } }, {_id : 1, blockNumber : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
-            var findQuery = {};
-            var returnQuery = {};
-            var responseObj = {};
-            responseObj[Constants.LAST_BLOCK_NUMBER] = blockNumber;
+                    var delta = parseInt(blockNumber/Constants.NETWORK_BLOCK_SHARE_LIMIT);  // Divide into NETWORK_BLOCK_SHARE_LIMIT number of equispaced hashes
+                    var blockNumbers = [];
+                    for(var i = delta; i <= blockNumber; i += delta){
+                        blockNumbers.push(i);
+                    }
 
-            if(err){
-                console.log("Mongo Err: ", err);
-            }
-            else if(docs.length == 0){                                                      // CASE RESET : None of the recieved hashes match, send 100 equispaced hashes
-                responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.RESET;
+                    findQuery = { blockNumber : { $in : blockNumbers } };
+                    returnQuery = { _id : 0, blockNumber : 1, blockHash : 1 };
 
-                var delta = parseInt(blockNumber/Constants.NETWORK_BLOCK_SHARE_LIMIT);  // Divide into NETWORK_BLOCK_SHARE_LIMIT number of equispaced hashes
-                var blockNumbers = [];
-                for(var i = delta; i <= blockNumber; i += delta){
-                    blockNumbers.push(i);
+                }
+                else if(docs.length == requestData[Constants.MY_HASHES].length){            // CASE UPDATE : All hashes match, send next blocks
+                    responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.UPDATE;
+                    findQuery = { blockNumber : { $gt : docs[0].blockNumber } }
+                    returnQuery = {_id : 0};
+                }
+                else{                                                                       // CASE FORK : Some of the hashes match (Sender need to update to forked blockchain)
+                    responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.FORK;
+                    findQuery = { blockNumber : { $gt : docs[0].blockNumber } };
+                    returnQuery = {_id : 0};
                 }
 
-                findQuery = { blockNumber : { $in : blockNumbers } };
-                returnQuery = { _id : 0, blockNumber : 1, blockHash : 1 };
-
-            }
-            else if(docs.length == requestData[Constants.MY_HASHES].length){            // CASE UPDATE : All hashes match, send next blocks
-                responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.UPDATE;
-                findQuery = { blockNumber : { $gt : docs[0].blockNumber } }
-                returnQuery = {_id : 0};
-            }
-            else{                                                                       // CASE FORK : Some of the hashes match (Sender need to update to forked blockchain)
-                responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.FORK;
-                findQuery = { blockNumber : { $gt : docs[0].blockNumber } };
-                returnQuery = {_id : 0};
-            }
-
-            BlockCollection.find(findQuery, returnQuery).sort({blockNumber : 1}).limit(Constants.NETWORK_BLOCK_SHARE_LIMIT).toArray(function(err, nextBlocks){
-                if(nextBlocks && nextBlocks[0] && nextBlocks[0].blockHash){
-                    responseObj[Constants.NEXT_BLOCKS] = nextBlocks;
-                    requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, responseObj);
-                    
-                }
+                BlockCollection.find(findQuery, returnQuery).sort({blockNumber : 1}).limit(Constants.NETWORK_BLOCK_SHARE_LIMIT).toArray(function(err, nextBlocks){
+                    if(nextBlocks && nextBlocks[0] && nextBlocks[0].blockHash){
+                        responseObj[Constants.NEXT_BLOCKS] = nextBlocks;
+                        requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, responseObj);
+                        
+                    }
+                });
             });
         });
-    });
+    }
 };
 
 /**
@@ -259,8 +258,9 @@ exports.create100Blocks = function(req, res) {
 };
 
 var createBlock = function(userData, callback) {
-    // TODO :  Call from Cron Script
+    // TODO : Call from Cron Script
     // TODO : Add block internal variable names to Constants
+    // TODO : Make a new thread, so that REST API calls remain unaffected
     var block = {
       blockNumber           : 0,
       nonce                 : 0,
