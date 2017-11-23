@@ -89,8 +89,16 @@ exports.sendLatestBlocks = function(requestData, requestSocket){
     // TODO : Validate request data here (and sort decending by Block Number)
     // TODO : Add checkpoints to prevent attacks
 
+    console.log("requestData", requestData);
+
     MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
-        BlockCollection.find({ $or : requestData[Constants.MY_HASHES]}, {_id : 1, blockNumber : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
+        var blockNumbers = [];
+        var blockHashes = [];
+        requestData[Constants.MY_HASHES].forEach(function(block){
+            blockNumbers.push(block.blockNumber);
+            blockHashes.push(block.blockHash);
+        });
+        BlockCollection.find({ blockNumber : { $in : blockNumbers }, blockHash : { $in : blockHashes } }, {_id : 1, blockNumber : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
             var findQuery = {};
             var returnQuery = {};
             var responseObj = {};
