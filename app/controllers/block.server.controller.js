@@ -49,45 +49,35 @@ exports.acceptBroadcastBlock = function(inputBlock){
     // TODO: Re broadcast ? Will need to handle infinite loop handling
     // TODO : Make blockNumber unique in Mongo Index
     console.log("Incoming BroadcastBlock : ", inputBlock);
-    validateAndParseBlock(inputBlock, function(isValid, block){
-        if(isValid){
-            MongoHandler.getCurrentBlock(function(err, existingBlock){
-                if(existingBlock.blockNumber == block.blockNumber - 1){
-                    MongoHandler.insertNetworkBlock(block, function(err, reply){});
-                }
-                else if(existingBlock.blockNumber == block.blockNumber){
-                    async.parallel([
-                            function(cb){
-                                RedisHandler.cachedCoinAge(existingBlock, cb);
-                            },
-                            function(cb){
-                                MongoHandler.calculateCoinAge(userId, suppliedBlockNumber, cb);
-                            },
-                        ], function(errs, results){
-                            if(errs){
-                                console.log("Mongo/Redis Err: ", errs);
-                            }
-                            if(results[1] > results[0]){
-                                MongoHandler.validateAndReplaceBlock(existingBlock, block);        // TODO : Test this case
-                            }
-                            // else{
-                            //     // Ignore lower coin stake block
-                            // }
-                    });
-                }
-                else if(existingBlock.blockNumber + 1 < block.blockNumber){
-                    MongoHandler.updateBlockchain();
-                }
-                // else{
-                //     // Ignore older block
-                // }
+    MongoHandler.getCurrentBlock(function(err, existingBlock){
+        if(existingBlock.blockNumber == block.blockNumber - 1){
+            MongoHandler.insertNetworkBlock(block, function(err, reply){});
+        }
+        else if(existingBlock.blockNumber == block.blockNumber){
+            async.parallel([
+                    function(cb){
+                        RedisHandler.cachedCoinAge(existingBlock, cb);
+                    },
+                    function(cb){
+                        MongoHandler.calculateCoinAge(userId, suppliedBlockNumber, cb);
+                    },
+                ], function(errs, results){
+                    if(errs){
+                        console.log("Mongo/Redis Err: ", errs);
+                    }
+                    if(results[1] > results[0]){
+                        MongoHandler.validateAndReplaceBlock(existingBlock, block);        // TODO : Test this case
+                    }
+                    // else{
+                    //     // Ignore lower coin stake block
+                    // }
             });
         }
-        // else if(block == Constants.FORK){
-        //     console.log("In Fork");
-        // }
+        else if(existingBlock.blockNumber + 1 < block.blockNumber){
+            MongoHandler.updateBlockchain();
+        }
         // else{
-        //     // Ignore invalid block
+        //     // Ignore older block
         // }
     });
 };
@@ -98,8 +88,10 @@ exports.acceptBroadcastBlock = function(inputBlock){
 exports.sendLatestBlocks = function(requestData, requestSocket){
     // TODO : Validate request data here (and sort decending by Block Number)
     // TODO : Add checkpoints to prevent attacks
+    console.log("requestData", requestData);
     MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
-        BlockCollection.find({ $or : requestData[Constants.MY_HASHES]}, {_id : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
+        BlockCollection.find({ $or : requestData[Constants.MY_HASHES]}, {_id : 1, blockNumber : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
+            console.log("docs", docs);
             var findQuery = {};
             var returnQuery = {};
             var responseObj = {};
@@ -136,7 +128,8 @@ exports.sendLatestBlocks = function(requestData, requestSocket){
                 if(nextBlocks && nextBlocks[0] && nextBlocks[0].blockHash){
                     responseObj[Constants.NEXT_BLOCKS] = nextBlocks;
                     requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, responseObj);
-                }
+                    
+                }console.log("responseObj", responseObj);
             });
         });
     });
@@ -150,6 +143,8 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
     // TODO : Reset Redis update ttl, so that update continues
 
     // TODO : Remove all balance and difficulty entries on FORK !
+
+    console.log("responseData", responseData);
     async.parallel([
             function(cb){
                 RedisHandler.isBlockchainUpdateInProgress(cb);

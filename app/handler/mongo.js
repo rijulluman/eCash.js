@@ -1,8 +1,10 @@
 // @MongoHandler
 // Author: Rijul Luman
 // To read/write data to/from Mongo in the desired format. 
+require('rootpath')();
 
 var async = require("async");
+var redisPath = Constants.redisPath;
 var blockController = require("app/controllers/block.server.controller");
 
 var MongoHandler = {
