@@ -91,7 +91,6 @@ exports.sendLatestBlocks = function(requestData, requestSocket){
 
     MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
         BlockCollection.find({ $or : requestData[Constants.MY_HASHES]}, {_id : 1, blockNumber : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
-            console.log("docs", docs);
             var findQuery = {};
             var returnQuery = {};
             var responseObj = {};
@@ -152,7 +151,8 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
                 RedisHandler.getUpdaterDetails(cb);
             },
         ], function(errs, results){
-            if(results[0] && results[1] == responseSocket.io.opts.hostname){
+            var socketId = responseSocket.id ? responseSocket.id : responseSocket.io.opts.hostname;
+            if(results[0] && results[1] == socketId){
                 if(responseData[Constants.YOUR_UPDATE_STATUS] == Constants.UPDATE){
                     MongoHandler.insertNetworkBlocks(responseData[Constants.NEXT_BLOCKS], function(){
                         MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
