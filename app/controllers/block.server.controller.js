@@ -303,9 +303,9 @@ var createBlock = function(userData, callback) {
             },
 
             function updateBlockChain(cb){
-                // TODO : Call Blockchain update here
                 // Also delete unconfirmed transactions present in block from memory
-                cb();
+                MongoHandler.updateBlockchain();
+                setTimeout(function(){ cb(); }, Constants.CREATE_BLOCK_UPDATE_TIMEOUT);
             },
 
             function getPreviousBlock(cb){

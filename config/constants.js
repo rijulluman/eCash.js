@@ -33,6 +33,7 @@ module.exports = Object.freeze({
   "BLOCKCHAIN_UPDATE_HOLD_TTL_MULTIPLIER" : 3,
   "UNCONFIRMED_TRANSACTION_TTL_SECONDS_PER_BLOCK" : 3600,  // Seconds per block difference
   "UPDATE_REQUEST_BLOCK_HASH_COUNT" : 10,
+  "CREATE_BLOCK_UPDATE_TIMEOUT"     : 3000,   // in ms
 
   "redisPath" : {
     "unconfirmedTransaction"        : "UT.",
