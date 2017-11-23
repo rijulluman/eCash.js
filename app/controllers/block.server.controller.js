@@ -59,7 +59,7 @@ exports.acceptBroadcastBlock = function(block){
                         RedisHandler.cachedCoinAge(existingBlock, cb);
                     },
                     function(cb){
-                        MongoHandler.calculateCoinAge(userId, suppliedBlockNumber, cb);
+                        MongoHandler.calculateCoinAge(block.blockCreatorId, block.blockNumber, cb);
                     },
                 ], function(errs, results){
                     if(errs){
