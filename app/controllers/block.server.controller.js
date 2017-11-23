@@ -45,10 +45,10 @@ exports.getUserBalance = function(req, res, next){
  * Accept, verify and add broadcasted block into Blockchain
  */
 
-exports.acceptBroadcastBlock = function(inputBlock){
+exports.acceptBroadcastBlock = function(block){
     // TODO: Re broadcast ? Will need to handle infinite loop handling
     // TODO : Make blockNumber unique in Mongo Index
-    console.log("Incoming BroadcastBlock : ", inputBlock);
+    console.log("Incoming BroadcastBlock : ", block);
     MongoHandler.getCurrentBlock(function(err, existingBlock){
         if(existingBlock.blockNumber == block.blockNumber - 1){
             MongoHandler.insertNetworkBlock(block, function(err, reply){});
@@ -88,7 +88,7 @@ exports.acceptBroadcastBlock = function(inputBlock){
 exports.sendLatestBlocks = function(requestData, requestSocket){
     // TODO : Validate request data here (and sort decending by Block Number)
     // TODO : Add checkpoints to prevent attacks
-    console.log("requestData", requestData);
+
     MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
         BlockCollection.find({ $or : requestData[Constants.MY_HASHES]}, {_id : 1, blockNumber : 1}).sort({blockNumber : -1}).toArray(function(err, docs){
             console.log("docs", docs);
@@ -129,7 +129,7 @@ exports.sendLatestBlocks = function(requestData, requestSocket){
                     responseObj[Constants.NEXT_BLOCKS] = nextBlocks;
                     requestSocket.emit(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, responseObj);
                     
-                }console.log("responseObj", responseObj);
+                }
             });
         });
     });
@@ -144,7 +144,6 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
 
     // TODO : Remove all balance and difficulty entries on FORK !
 
-    console.log("responseData", responseData);
     async.parallel([
             function(cb){
                 RedisHandler.isBlockchainUpdateInProgress(cb);
@@ -153,11 +152,11 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
                 RedisHandler.getUpdaterDetails(cb);
             },
         ], function(errs, results){
-            if(results[0] && results[1] == responseSocket.id){
+            if(results[0] && results[1] == responseSocket.io.opts.hostname){
                 if(responseData[Constants.YOUR_UPDATE_STATUS] == Constants.UPDATE){
                     MongoHandler.insertNetworkBlocks(responseData[Constants.NEXT_BLOCKS], function(){
                         MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
-                            if(blockNumber < parseInt(responseObj[Constants.LAST_BLOCK_NUMBER]) ){
+                            if(blockNumber < parseInt(responseData[Constants.LAST_BLOCK_NUMBER]) ){
                                 updateBlockchainFromBlock(blockNumber);             // Recursive call till we reach the latest block
                             }
                             else{
@@ -166,7 +165,7 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
                         });
                     });
                 }
-                else if(responseObj[Constants.YOUR_UPDATE_STATUS] == Constants.FORK){
+                else if(responseData[Constants.YOUR_UPDATE_STATUS] == Constants.FORK){
                     var updateBlocks = [];
                     MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
                         for(var i = 0; i < responseData[Constants.NEXT_BLOCKS].length; i++){
@@ -180,7 +179,7 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
                         MongoHandler.updateNetworkBlocks(updateBlocks, function(){
                             MongoHandler.insertNetworkBlocks(responseData[Constants.NEXT_BLOCKS], function(){
                                 MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
-                                    if(blockNumber < parseInt(responseObj[Constants.LAST_BLOCK_NUMBER]) ){
+                                    if(blockNumber < parseInt(responseData[Constants.LAST_BLOCK_NUMBER]) ){
                                         updateBlockchainFromBlock(blockNumber);             // Recursive call till we reach the latest block
                                     }
                                     else{
@@ -191,7 +190,7 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
                         });
                     });
                 }
-                else if(responseObj[Constants.YOUR_UPDATE_STATUS] = Constants.RESET){
+                else if(responseData[Constants.YOUR_UPDATE_STATUS] = Constants.RESET){
                     var blockNumbers = [];
                     var blockHashes = [];
                     responseData[Constants.NEXT_BLOCKS].forEach(function(block){
@@ -579,8 +578,9 @@ var validateAndParseBlock = function(blockInput, callback){
 
     });
 
-    
 };
+
+exports.validateAndParseBlock = validateAndParseBlock;
 
 var broadcastBlock = function(block){
     validateAndParseBlock(block, function(isValid, parsedBlock){

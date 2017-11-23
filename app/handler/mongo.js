@@ -529,17 +529,17 @@ var MongoHandler = {
     },
 
     sendDataToRandomNodeInNetwork : function(socketCommand, data){
-        // Currently only incoming nodes used for random connections
-        var socket = null;
-        while(socket == null && Object.keys(BroadcastMaster.sockets.connected).length){
-            var sockets = Object.keys(BroadcastMaster.sockets.connected);
-            var randomIndex = Math.floor(Math.random() * (sockets.length + 1));
-            socket = BroadcastMaster.sockets.connected[sockets[randomIndex]];
-        }
+        // Currently only outgoing nodes used for random connections
+        var socket = OutgoingSockets[Math.floor(Math.random() * (OutgoingSockets.length))];
+        // while(socket == null && Object.keys(BroadcastMaster.sockets.connected).length){
+        //     var sockets = Object.keys(BroadcastMaster.sockets.connected);
+        //     var randomIndex = Math.floor(Math.random() * (sockets.length + 1));
+        //     socket = BroadcastMaster.sockets.connected[sockets[randomIndex]];
+        // }
         
         if(socket){
             RedisStoreMA.expire(redisPath.blockchainUpdateInProgress, Constants.BLOCKCHAIN_UPDATE_HOLD_TTL_MULTIPLIER * Constants.AVERAGE_BLOCK_TIME_MS / 1000);    // Extend update TTL
-            RedisHandler.setUpdaterDetails(socket.id, function(err, reply){         // Save random node name in redis, only update on reply from that node (For Security)
+            RedisHandler.setUpdaterDetails(socket.io.opts.hostname, function(err, reply){         // Save random node name in redis, only update on reply from that node (For Security)
                 socket.emit(socketCommand, data);
             });
         }
