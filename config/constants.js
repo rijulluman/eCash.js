@@ -12,7 +12,7 @@ module.exports = Object.freeze({
   "YOUR_UPDATE_STATUS"            : "updateStatus",
   "NEXT_BLOCKS"                   : "myBlocks",
   "LAST_BLOCK_NUMBER"             : "lastBlock",
-  "NETWORK_BLOCK_SHARE_LIMIT"     : 100,
+  "NETWORK_BLOCK_SHARE_LIMIT"     : 20,
 
   "PRIVATE_KEY_LENGTH"            : 32,
   "VALID_HEX_PRIVATE_KEY_LENGTH"  : 64,      // this.PRIVATE_KEY_LENGTH * 2,

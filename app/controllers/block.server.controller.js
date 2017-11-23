@@ -157,7 +157,7 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
                     MongoHandler.insertNetworkBlocks(responseData[Constants.NEXT_BLOCKS], function(){
                         MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
                             if(blockNumber < parseInt(responseData[Constants.LAST_BLOCK_NUMBER]) ){
-                                updateBlockchainFromBlock(blockNumber);             // Recursive call till we reach the latest block
+                                MongoHandler.updateBlockchainFromBlock(blockNumber);             // Recursive call till we reach the latest block
                             }
                             else{
                                 RedisHandler.resetBlockchainUpdateInProgress();
@@ -180,7 +180,7 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
                             MongoHandler.insertNetworkBlocks(responseData[Constants.NEXT_BLOCKS], function(){
                                 MongoHandler.getCurrentBlockNumber(function(err, blockNumber){
                                     if(blockNumber < parseInt(responseData[Constants.LAST_BLOCK_NUMBER]) ){
-                                        updateBlockchainFromBlock(blockNumber);             // Recursive call till we reach the latest block
+                                        MongoHandler.updateBlockchainFromBlock(blockNumber);             // Recursive call till we reach the latest block
                                     }
                                     else{
                                         RedisHandler.resetBlockchainUpdateInProgress();
@@ -199,11 +199,11 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
                     });
                     BlockCollection.find({ blockNumber : { $in : blockNumbers }, blockHash : { $in : blockHashes } }, { _id : 0, blockNumber : 1, blockHash : 1 }).sort({blockNumber : -1}).toArray(function(err, matchedBlocks){
                         if(matchedBlocks && matchedBlocks.length && matchedBlocks[0] && matchedBlocks[0].blockHash){
-                            updateBlockchainFromBlock(matchedBlocks[0].blockNumber);    // Recursive call till be reach a forking point
+                            MongoHandler.updateBlockchainFromBlock(matchedBlocks[0].blockNumber);    // Recursive call till be reach a forking point
                         }
                         else if(matchedBlocks.length == 0){
                             // If We have checkpoints, checkpoint number will be passed from here
-                            updateBlockchainFromBlock(0);   // Since none of the blocks match
+                            MongoHandler.updateBlockchainFromBlock(0);   // Since none of the blocks match
                         }
                         else{
                             RedisHandler.resetBlockchainUpdateInProgress();
