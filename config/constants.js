@@ -22,7 +22,7 @@ module.exports = Object.freeze({
   "BLOCK_MAX_TRANSACTIONS_COUNT"  : 512,
   "GENESIS_BLOCK_PREV_HASH"       : "0123456789abcdeffedcba98765432100123456789abcdeffedcba9876543210",
   "GENESIS_BLOCK_TARGET"          : "01ffffff",   // 03ffffff is approximately 1 min
-  "DIFFICULTY_CHANGE_EVERY_BLOCKS": 10,
+  "DIFFICULTY_CHANGE_EVERY_BLOCKS": 1000,
   "TRANSACTION_DEADLINE_OFFSET"   : 100,     // Number of blocks before expiring
   "MAX_STAKEABLE_BLOCKS"          : 100,
   "MIN_HOLD_FOR_STAKE_BLOCKS"     : 20,
