@@ -20,6 +20,12 @@ exports.read = function(req, res) {
     res.jsonp(req.block);
 };
 
+exports.latestBlock = function(req, res) {
+    MongoHandler.getCurrentBlock(function(err, currentBlock){
+        res.jsonp(currentBlock);
+    });
+};
+
 /**
  * UserId Bind middleware
  */
@@ -317,8 +323,7 @@ var createBlock = function(userData, callback) {
             },
 
             function getPreviousBlock(cb){
-                BlockCollection.find({}, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).limit(1).toArray(function(errs, docs){
-                    var previousBlock = docs[0];
+                MongoHandler.getCurrentBlock(function(errs, previousBlock){
                     block.blockNumber = previousBlock.blockNumber + 1;
                     block.previousBlockHash = previousBlock.blockHash;
                     cb();    
@@ -359,6 +364,7 @@ var createBlock = function(userData, callback) {
             },
 
             function broadcastGeneratedBlock(cb){
+                block._id = undefined;          // Remove MongoDB _id from record before broadcast
                 broadcastBlock(block);
                 cb();
             },

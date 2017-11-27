@@ -11,7 +11,8 @@ var block = require('app/controllers/block.server.controller');
 module.exports = function (app) {
 
 	// Setting up the listings api
-    app.route('/api/block/:blockId').post(block.read);
+    app.route('/api/block/id/:blockId').post(block.read);
+    app.route('/api/block/latest').get(block.latestBlock);
 
 
     app.route('/api/block/create/new').post(block.create); 		// For Testing only
