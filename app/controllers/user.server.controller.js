@@ -9,6 +9,29 @@ var async = require('async');
  * Save Wallet info in Redis
  */
 exports.login = function(req, res) {
+    var user = {};
+    var sampleMessage = "test";
+    if(
+            CommonFunctions.validatePublicKeyHexString(req.body.publicKey)
+        &&  CommonFunctions.validatePrivateKeyHexString(req.body.privateKey)
+        &&  CommonFunctions.verifyWalletKeyPair(req.body.privateKey, req.body.publicKey)
+        ){
+        user.publicKey = req.body.publicKey.toLowerCase();
+        user.privateKey = req.body.privateKey.toLowerCase();
+
+        RedisHandler.setUserDetails(user, function(err, reply){
+            if(!err){
+                res.send("Login Successful !");
+            }
+            else{
+                res.send("Login Failure ! (Redis Error)");
+            }
+        });
+        
+    }
+    else{
+        res.send("Invalid Key pair");
+    }
     // res.jsonp(req.transaction);
 };
 

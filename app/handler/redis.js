@@ -187,8 +187,26 @@ var RedisHandler = {
 
     getUpdaterDetails : function(callback){
         RedisStoreSL.get(redisPath.setUpdateSocketId, callback);
-    }
+    },
 
+    setUserDetails : function(userData, callback){
+        RedisStoreMA.set(redisPath.userKeys, JSON.stringify(userData), function(err, reply){
+            callback(err);
+        }); 
+    },
+
+    getUserDetails : function(callback){
+        RedisStoreSL.get(redisPath.userKeys, function(err, reply){
+            if(reply && reply.length){
+                var userData = JSON.parse(reply);
+                userData.privateKey = CommonFunctions.hexStringToBuffer(userData.privateKey);
+                callback(null, userData);
+            }
+            else{
+                callback(err);
+            }
+        });
+    },
   
 //End of export   
 }

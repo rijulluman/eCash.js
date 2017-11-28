@@ -175,6 +175,12 @@ var CommonFunctions = {
     return secp256k1.verify(CommonFunctions.hexStringToBuffer(sha256Hash), CommonFunctions.hexStringToBuffer(signature), CommonFunctions.hexStringToBuffer(publicKey));
   },
 
+  verifyWalletKeyPair : function(privateKey, publicKey){
+    var sampleMessage = Constants.GENESIS_BLOCK_PREV_HASH;
+    privateKey = CommonFunctions.hexStringToBuffer(privateKey);
+    return CommonFunctions.verifySignature(sampleMessage, publicKey, CommonFunctions.generateSignature(sampleMessage, privateKey));
+  }
+
 }
 
 // export

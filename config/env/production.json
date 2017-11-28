@@ -1,6 +1,5 @@
 {
   "mongo_url":"mongodb://userName:password@domain.com:27017,subdomain.domain.com:27017?authSource=admin",
-  "mongo_coll_transaction" : "transactions",
   "mongo_coll_block"    : "blocks",
   "mongo_coll_balance"  : "balances", 
   "mongo_coll_target"  : "targets",
@@ -18,5 +17,6 @@
 
   "default_broadcast_sockets" : [],
   "express_port": 80,
-  "socket_io_port" : 81
+  "socket_io_port" : 81,
+  "miner_io_port" : 82
 }

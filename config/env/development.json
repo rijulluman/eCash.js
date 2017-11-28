@@ -1,6 +1,5 @@
 {
   "mongo_url":"mongodb://localhost:27017/rlc",
-  "mongo_coll_transaction" : "transactions",
   "mongo_coll_block"    : "blocks",
   "mongo_coll_balance"  : "balances", 
   "mongo_coll_target"  : "targets",
@@ -18,5 +17,6 @@
 
   "default_broadcast_sockets" : ["http://10.0.0.160:3001"],
   "express_port": 3000,
-  "socket_io_port" : 3001
+  "socket_io_port" : 3001,
+  "miner_io_port" : 3002
 }

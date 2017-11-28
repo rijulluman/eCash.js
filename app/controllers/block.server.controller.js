@@ -154,7 +154,7 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
     // TODO : Validate response data here (and sort assending by Block Number)
     // TODO : Reset Redis update ttl, so that update continues
 
-    // TODO : Remove all balance and difficulty entries on FORK !
+    // TODO : Test : All later balance and difficulty entries should be removed on FORK !
 
     async.parallel([
             function(cb){
@@ -236,8 +236,15 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
  */
 
 exports.create = function(req, res) {
-    createBlock(req.body, function(err, block){
-        res.jsonp(block);
+    RedisHandler.getUserDetails(function(err, userData){
+        if(!userData){
+            res.send("User not logged in");
+        }
+        else{
+            createBlockLocal(userData, function(err, block){
+                res.jsonp(block);
+            });
+        }
     });
 };
 
@@ -246,27 +253,25 @@ exports.create100Blocks = function(req, res) {
     for(var i = 0; i < 100; i++){
         arr[i] = i;
     }
-    //TODO : Change input method / Read from Login
-    var user = 
-    // {
-    //     "privateKey": "fcbd864a695f0fef7162af1ff80641d351fc31e2ff35347488d83d1f386376e5",
-    //     "publicKey": "036efa45411e658bcafd151abe923334568ddd734e43e6432de38dac5a622c7756"
-    // };
-    {
-        "privateKey": "418836c2f238940f9f62115800075b956ec0f167a60bce42663e9958f62eae7b",
-        "publicKey": "027ce749cc99715d1dd0904c7ccf5e3a9988e57fbbecfe9b0d73f7fff32f3b12a6"
-    };
-    async.eachSeries(arr, function(a, cb){
-        createBlock(user, cb);
-    }, function(err, results){
-        res.send("Done!");
+    RedisHandler.getUserDetails(function(err, userData){
+        if(!userData){
+            res.send("User not logged in");
+        }
+        else{
+            async.eachSeries(arr, function(a, cb){
+                createBlockLocal(userData, cb);
+            }, function(err, results){
+                res.send("Done!");
+            });
+        }
     });
 };
 
-var createBlock = function(userData, callback) {
+var createBlockLocal = function(user, callback) {
     // TODO : Call from Cron Script
     // TODO : Add block internal variable names to Constants
     // TODO : Make a new thread, so that REST API calls remain unaffected
+    // TODO : Add Max time limit for each individual block generation (A block may be stuck in proofHash for a long time)
     var block = {
       blockNumber           : 0,
       nonce                 : 0,
@@ -284,14 +289,10 @@ var createBlock = function(userData, callback) {
       transactions          : []
     };
 
-    var user = {};
     var zaddClear = [];
 
     async.waterfall([
-            function getBlockCreatorDetails(cb){
-                user.publicKey = userData.publicKey;
-                user.privateKey = CommonFunctions.hexStringToBuffer(userData.privateKey);
-                
+            function getBlockCreatorDetails(cb){  
                 block.blockCreatorId = user.publicKey;
                 cb();
             },
@@ -382,6 +383,8 @@ var createBlock = function(userData, callback) {
             callback(null, block);
         });
 };
+
+exports.createBlock = createBlockLocal;
 
 var makeTransactionArray = function(count, callback){
     RedisHandler.getMaxFeeTransactionIds(count, function(err, ids){

@@ -20,7 +20,6 @@ var config                  =    require("config/config");
 const PORT                  =   config.express_port;
 // mongo config
 const MONGO_URL             = config.mongo_url;
-const MONGO_COLL_TRANSACTION= config.mongo_coll_transaction;
 const MONGO_COLL_BLOCK      = config.mongo_coll_block;
 const MONGO_COLL_BALANCE    = config.mongo_coll_balance;
 const MONGO_COLL_TARGET     = config.mongo_coll_target;
@@ -136,7 +135,6 @@ var MongoClient         =   require('mongodb').MongoClient;
 global.ObjectId         =   require('mongodb').ObjectID;
 
 global.mongoConnection        =   null;
-global.TransactionCollection  =   null;
 global.BlockCollection        =   null;
 global.BalanceCollection      =   null;
 global.TargetCollection       =   null;
@@ -155,7 +153,6 @@ MongoClient.connect(MONGO_URL, function(err, db) {
   mongoConnection       =   db;
   
   // set collection
-  TransactionCollection    = mongoConnection.collection(MONGO_COLL_TRANSACTION);
   BlockCollection          = mongoConnection.collection(MONGO_COLL_BLOCK);
   BalanceCollection        = mongoConnection.collection(MONGO_COLL_BALANCE);
   TargetCollection         = mongoConnection.collection(MONGO_COLL_TARGET);

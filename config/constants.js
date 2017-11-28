@@ -41,7 +41,8 @@ module.exports = Object.freeze({
     "currentBlock"                  : "CB",
     "coinAge"                       : "AGE.",
     "setUpdateSocketId"             : "UID",
-    "blockchainUpdateInProgress"    : "BUP"
+    "blockchainUpdateInProgress"    : "BUP",
+    "userKeys"                      : "USER"
   }
 
 });

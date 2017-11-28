@@ -462,6 +462,9 @@ var MongoHandler = {
 
     updateNetworkBlocks : function(blocks, callback){
         // TODO: Sort blocks in assending order by blockNumber
+        var blockNumber = blocks[0].blockNumber;
+        BalanceCollection.remove({blockNumber : { $gte : blockNumber} } );
+        TargetCollection.remove( {blockNumber : { $gte : blockNumber} } );
         async.eachSeries(blocks, function(block, cb){
                 blockController.validateAndParseBlock(block, function(isValid, parsedBlock){
                     if(isValid){
