@@ -148,7 +148,9 @@ MongoClient.connect(MONGO_URL, function(err, db) {
 
   // mongo db started
   console.log('Mongo DB Started');
-  MongoHandler.updateBlockchain();
+  setTimeout(function () {      // TODO : Need to handle in a better way (wait till blockchain update complete before proceeding, as blockchain update may take hours/days to update for a big blockchain)
+    MongoHandler.updateBlockchain();
+  }, 5000);
   // TODO : Add Validate existing blockchain function here
 });
 
@@ -185,4 +187,4 @@ setTimeout(function () {
         }
     });
     
-}, 5000);
+}, 10000);
