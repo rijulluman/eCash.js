@@ -12,5 +12,5 @@ module.exports = function (app) {
 
 	// Setting up the listings api
     app.route('/api/user/login').post(user.login);
-    app.route('/api/user/getCoinAge').get(user.getCoinAge);
+    app.route('/api/user/getCoinAge').get(user.setUserDetails, user.getCoinAge);
 };

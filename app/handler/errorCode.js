@@ -11,6 +11,7 @@ var ERROR_CODES  =   new Array();
 /* ALL            */ ERROR_CODES[1]    =  dataNotComplete;
 /* ALL            */ ERROR_CODES[2]    =  dbError;
 /* ALL            */ ERROR_CODES[3]    =  'Redis Error';
+/* ALL            */ ERROR_CODES[4]    =  'User not Logged in !';
 
 /* TRANSACTION    */ ERROR_CODES[5]    =  'Transaction Data Missing';
 /* TRANSACTION    */ ERROR_CODES[6]    =  'Invalid Transaction Amount';
@@ -29,6 +30,7 @@ var ERROR_CODES  =   new Array();
 
 /* BLOCK          */ ERROR_CODES[20]   =  'Invalid userId';
 
+/* USER           */ ERROR_CODES[30]   =  'Invalid Key pair';
 
 
 // @Response Handler

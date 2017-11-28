@@ -47,6 +47,7 @@ exports.read = function(req, res) {
 
 exports.create = function (req, res, next) {
     // TODO : Add transaction internal variable names to Constants
+    // TODO : Use logged in user info to create transactions
     var transaction = {
         txId        : "",   // Unique Hash for this transaction
         sender      : "",
@@ -155,7 +156,7 @@ var addUnconfirmedTransaction = function(transaction){
             }); 
         }
         else{
-            console.log("Invalid")
+            console.log("Invalid Transaction could not be added");
         }
     });
 };

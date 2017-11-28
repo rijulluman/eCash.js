@@ -7,6 +7,7 @@ require('rootpath')();
  */
 
 var block = require('app/controllers/block.server.controller');
+var user = require('app/controllers/user.server.controller');
 
 module.exports = function (app) {
 
@@ -15,8 +16,8 @@ module.exports = function (app) {
     app.route('/api/block/latest').get(block.latestBlock);
 
 
-    app.route('/api/block/create/new').post(block.create); 		// For Testing only
-    app.route('/api/block/create/new100').post(block.create100Blocks); 		// For Testing only
+    app.route('/api/block/create/new').post(user.setUserDetails, block.create); 		// For Testing only
+    app.route('/api/block/create/new100').post(user.setUserDetails, block.create100Blocks); 		// For Testing only
 
     app.route('/api/balance/:userId').get(block.getUserBalance);
 

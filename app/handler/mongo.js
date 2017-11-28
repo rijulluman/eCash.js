@@ -158,7 +158,7 @@ var MongoHandler = {
         BalanceCollection.find({blockNumber : blockNumber}).toArray(function(err, docs){
             if(docs && docs.length == 0){
                 BlockCollection.find({blockNumber : blockNumber}).toArray(function(err, doc){
-                    if(err || !doc){
+                    if(err || !doc || !doc.length){
                         console.log("No Such Block : ", blockNumber);
                         callback();
                     }

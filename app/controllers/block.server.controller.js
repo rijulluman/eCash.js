@@ -53,7 +53,7 @@ exports.getUserBalance = function(req, res, next){
 
 exports.acceptBroadcastBlock = function(block){
     // TODO: Re broadcast ? Will need to handle infinite loop handling
-    // TODO : Make blockNumber unique in Mongo Index
+
     // console.log("Incoming BroadcastBlock : ", block);
     MongoHandler.getCurrentBlock(function(err, existingBlock){
         if(existingBlock.blockNumber == block.blockNumber - 1){
@@ -236,16 +236,14 @@ exports.receiveLatestBlocks = function(responseData, responseSocket){
  */
 
 exports.create = function(req, res) {
-    RedisHandler.getUserDetails(function(err, userData){
-        if(!userData){
-            res.send("User not logged in");
-        }
-        else{
-            createBlockLocal(userData, function(err, block){
-                res.jsonp(block);
-            });
-        }
-    });
+    if(!req.user){
+        return ErrorCodeHandler.getErrorJSONData({'code':4, 'res':res});
+    }
+    else{
+        createBlockLocal(req.user, function(err, block){
+            res.jsonp(block);
+        });
+    }
 };
 
 exports.create100Blocks = function(req, res) {
@@ -253,18 +251,16 @@ exports.create100Blocks = function(req, res) {
     for(var i = 0; i < 100; i++){
         arr[i] = i;
     }
-    RedisHandler.getUserDetails(function(err, userData){
-        if(!userData){
-            res.send("User not logged in");
-        }
-        else{
-            async.eachSeries(arr, function(a, cb){
-                createBlockLocal(userData, cb);
-            }, function(err, results){
-                res.send("Done!");
-            });
-        }
-    });
+    if(!req.user){
+        return ErrorCodeHandler.getErrorJSONData({'code':4, 'res':res});
+    }
+    else{
+        async.eachSeries(arr, function(a, cb){
+            createBlockLocal(req.user, cb);
+        }, function(err, results){
+            res.send("Done!");
+        });
+    }
 };
 
 var createBlockLocal = function(user, callback) {
