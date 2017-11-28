@@ -2,6 +2,7 @@
 // Author: Rijul Luman
 // To Create, store and fetch Blocks
 
+// TODO : Hard code genesis block
 'use strict';
 var async = require('async');
 
@@ -51,7 +52,7 @@ exports.getUserBalance = function(req, res, next){
  * Accept, verify and add broadcasted block into Blockchain
  */
 
-exports.acceptBroadcastBlock = function(block){
+var acceptBroadcastBlock = function(block){
     // TODO: Re broadcast ? Will need to handle infinite loop handling
 
     // console.log("Incoming BroadcastBlock : ", block);
@@ -87,6 +88,8 @@ exports.acceptBroadcastBlock = function(block){
         // }
     });
 };
+
+exports.acceptBroadcastBlock = acceptBroadcastBlock;
 
 /**
  * Send latest block hashes in the Blockchain
@@ -356,7 +359,7 @@ var createBlockLocal = function(user, callback) {
             },
 
             function addBlockToDb(cb){
-                MongoHandler.insertBlock(block, function(){});
+                acceptBroadcastBlock(block);        // We calculate stake, incase the DB has received the next block from the network, while we were generating the local block
                 cb();
             },
 
