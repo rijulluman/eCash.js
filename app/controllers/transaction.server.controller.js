@@ -138,7 +138,7 @@ exports.create = function (req, res, next) {
  */
 
 exports.acceptBroadcastTransaction = function(transaction){
-    // TODO : Re broadcast ? Will need to handle infinite loop handling
+    // TODO : Re broadcast ? Will need to handle infinite loop handling (Rebroadcast only if transaction was not already present in Redis)
     console.log("Incoming BroadcastTransaction : ", transaction);
     addUnconfirmedTransaction(transaction);
 };

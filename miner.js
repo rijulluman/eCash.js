@@ -104,6 +104,19 @@ RedisStoreSL.on("error", function (err) {
 //redis.debug_mode = true;
 
 /**
+ * Other Required Module
+ */
+// Common functions
+global.CommonFunctions    =   require('app/controllers/common');
+// For Handling Error Codes
+global.ErrorCodeHandler   =   require('app/handler/errorCode');
+// Redis Handler
+global.RedisHandler       =   require('app/handler/redis');
+// Mongo Handler
+global.MongoHandler       =   require('app/handler/mongo');
+
+
+/**
   * Mongo DB
 */
 
@@ -135,21 +148,8 @@ MongoClient.connect(MONGO_URL, function(err, db) {
 
   // mongo db started
   console.log('Mongo DB Started');
+  MongoHandler.updateBlockchain();
 });
-
-
-/**
- * Other Required Module
- */
-// Common functions
-global.CommonFunctions    =   require('app/controllers/common');
-// For Handling Error Codes
-global.ErrorCodeHandler   =   require('app/handler/errorCode');
-// Redis Handler
-global.RedisHandler       =   require('app/handler/redis');
-// Mongo Handler
-global.MongoHandler       =   require('app/handler/mongo');
-
 
 // Add Routes
 // For APIs
@@ -184,4 +184,4 @@ setTimeout(function () {
         }
     });
     
-}, 3000);
+}, 5000);
