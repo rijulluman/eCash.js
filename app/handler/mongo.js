@@ -205,7 +205,7 @@ var MongoHandler = {
                 });
             }
             else{
-                console.log("Duplicate Balance Insert : Block Number : " + blockNumber + "  BlockHash : " + blockHash);
+                console.log("Duplicate Balance Insert : Block Number : " + block.blockNumber + "  BlockHash : " + block.blockHash);
                 // TODO: Handle Duplicate insert here 
             }
         });
