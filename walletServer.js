@@ -2,6 +2,7 @@
 'use strict';
 
 require('rootpath')();
+require("./AddMongoIndex.js");
 /**
  * Required configs
  */

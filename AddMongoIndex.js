@@ -78,9 +78,9 @@ MongoClient.connect(MONGO_URL, function(err, db) {
         //   MongoIndex.addUser(db, 'username', 'password', role_chat_read, callback);      
         // },
       ], function(errs, results){
-        MongoIndex.getIndexes(db, MONGO_COLL_BLOCK);
-        MongoIndex.getIndexes(db, MONGO_COLL_BALANCE);
-        MongoIndex.getIndexes(db, MONGO_COLL_TARGET);
+        // MongoIndex.getIndexes(db, MONGO_COLL_BLOCK);
+        // MongoIndex.getIndexes(db, MONGO_COLL_BALANCE);
+        // MongoIndex.getIndexes(db, MONGO_COLL_TARGET);
         db.close();
       });
     }

@@ -4,7 +4,7 @@
 require('rootpath')();
 var path = require('path');
 var async = require("async");
-
+require("./AddMongoIndex.js");
 /**
  * Required configs
  */
