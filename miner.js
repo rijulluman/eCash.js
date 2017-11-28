@@ -79,7 +79,7 @@ config.default_broadcast_sockets.forEach(function(url){
   });
   socket.on(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, function(responseData){
     blockController.receiveLatestBlocks(responseData, socket);
-  // });
+  });
   OutgoingSockets.push(socket);
 });
 
