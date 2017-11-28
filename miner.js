@@ -1,4 +1,6 @@
 // Author : Rijul Luman
+// Note : Miner will need wallet running, in order to have timely broadcast updates
+
 'use strict';
 
 require('rootpath')();
@@ -67,19 +69,19 @@ BroadcastMaster.on('connection', function (socket) {
 });
 
 // Make connectiosn to some default nodes
-var ioc = require('socket.io-client');
-config.default_broadcast_sockets.forEach(function(url){
-  var socket = ioc.connect(url);
-  socket.on(Constants.SOCKET_BROADCAST_BLOCK, blockController.acceptBroadcastBlock);
-  socket.on(Constants.SOCKET_BROADCAST_TRANSACTION, transactionController.acceptBroadcastTransaction);
-  socket.on(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, function(requestData){
-    blockController.sendLatestBlocks(requestData, socket);
-  });
-  socket.on(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, function(responseData){
-    blockController.receiveLatestBlocks(responseData, socket);
-  });
-  OutgoingSockets.push(socket);
-});
+// var ioc = require('socket.io-client');
+// config.default_broadcast_sockets.forEach(function(url){
+//   var socket = ioc.connect(url);
+//   socket.on(Constants.SOCKET_BROADCAST_BLOCK, blockController.acceptBroadcastBlock);
+//   socket.on(Constants.SOCKET_BROADCAST_TRANSACTION, transactionController.acceptBroadcastTransaction);
+//   socket.on(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, function(requestData){
+//     blockController.sendLatestBlocks(requestData, socket);
+//   });
+//   socket.on(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, function(responseData){
+//     blockController.receiveLatestBlocks(responseData, socket);
+//   });
+//   OutgoingSockets.push(socket);
+// });
 
 
 /**
