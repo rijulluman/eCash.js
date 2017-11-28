@@ -149,6 +149,7 @@ MongoClient.connect(MONGO_URL, function(err, db) {
   // mongo db started
   console.log('Mongo DB Started');
   MongoHandler.updateBlockchain();
+  // TODO : Add Validate existing blockchain function here
 });
 
 // Add Routes
