@@ -524,7 +524,7 @@ var MongoHandler = {
     },
 
     updateBlockchainFromBlock : function(blockNumber){
-        BlockCollection.find({ blockNumber : { $gt : blockNumber, $lte : blockNumber + Constants.UPDATE_REQUEST_BLOCK_HASH_COUNT} }, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).toArray(function(err, docs){
+        BlockCollection.find({ blockNumber : { $gte : blockNumber - 1, $lte : blockNumber - 1 + Constants.UPDATE_REQUEST_BLOCK_HASH_COUNT} }, {_id : 0, blockNumber : 1, blockHash : 1}).sort({"blockNumber" : -1}).toArray(function(err, docs){
             var sendObj = {};
             sendObj[Constants.MY_HASHES] = docs;
             MongoHandler.sendDataToRandomNodeInNetwork(Constants.SOCKET_GET_LATEST_BLOCK_HASHES, sendObj);
