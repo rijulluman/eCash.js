@@ -61,6 +61,7 @@ app.all('*', function(req, res, next) {
 var server = require('http').Server(app);
 global.BroadcastMaster = require('socket.io')(server);    // var io = 
 global.OutgoingSockets = [];
+global.MinerSockets = [];
 server.listen(config.socket_io_port);
 
 var blockController = require("app/controllers/block.server.controller");
@@ -93,6 +94,13 @@ config.default_broadcast_sockets.forEach(function(url){
   socket.on(Constants.SOCKET_GET_LATEST_BLOCK_REPLY, function(responseData){
     blockController.receiveLatestBlocks(responseData, socket);
   });
+  OutgoingSockets.push(socket);
+});
+
+config.miner_broadcast_sockets.forEach(function(url){
+  var socket = ioc.connect(url);
+  socket.on(Constants.SOCKET_BROADCAST_BLOCK, blockController.acceptBroadcastBlock);
+  socket.on(Constants.SOCKET_BROADCAST_TRANSACTION, transactionController.acceptBroadcastTransaction);
   OutgoingSockets.push(socket);
 });
 

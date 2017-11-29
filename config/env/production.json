@@ -16,6 +16,7 @@
   },
 
   "default_broadcast_sockets" : [],
+  "miner_broadcast_sockets"   : [],
   "express_port": 80,
   "socket_io_port" : 81,
   "miner_io_port" : 82
