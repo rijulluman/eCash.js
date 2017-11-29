@@ -92,17 +92,17 @@ var CommonFunctions = {
   },
 
   generateProofHashAndNonce : function(target, block){
-    var time = new Date().getTime();
-    for(var i = Math.floor(Math.random() * Constants.SUM_DECIMAL_CORRECTION); i < Number.MAX_SAFE_INTEGER; i++){    // Add Randomness to i to prevent halting of the blockchain, if only 1 node active on the network
+    // var time = new Date().getTime();
+    for(var i = 0; i < Number.MAX_SAFE_INTEGER; i++){    // Add Randomness to i to prevent halting of the blockchain, if only 1 node active on the network
       block.nonce = i;
       var hash = CommonFunctions.generateProofHash(block);
       
       if(CommonFunctions.validateProofHash(hash, target)){
         return { hash : hash, nonce: block.nonce } ;
       }
-      else if(i%100000 == 0 && new Date().getTime() - time > Constants.PROOF_HASH_AVG_BLOCK_TIME_MULTIPLIER * Constants.AVERAGE_BLOCK_TIME_MS){
-        return { hash : hash, nonce: block.nonce } ;  // Will generate invalid block, but we need to stop trying this, or try again with different transactions
-      }
+      // else if(i%100000 == 0 && new Date().getTime() - time > Constants.PROOF_HASH_AVG_BLOCK_TIME_MULTIPLIER * Constants.AVERAGE_BLOCK_TIME_MS){
+      //   return { hash : hash, nonce: block.nonce } ;  // Will generate invalid block, but we need to stop trying this, or try again with different transactions
+      // }
     }
   },
 
