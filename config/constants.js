@@ -30,7 +30,7 @@ module.exports = Object.freeze({
   "AVERAGE_BLOCK_TIME_MS"         : 60000,     // 60000 * 1,     // 1 min
   "CURRENT_BLOCK_REDIS_TTL"       : 200,      // Idealy a little higer than the average block time
   "BLOCK_COIN_AGE_REDIS_TTL"      : 200,      // Idealy a little higer than the average block time
-  "BLOCKCHAIN_UPDATE_HOLD_TTL_MULTIPLIER" : 3,
+  "BLOCKCHAIN_UPDATE_HOLD_TTL_MULTIPLIER" : 0.5,    // Should be higher than 2
   "PROOF_HASH_AVG_BLOCK_TIME_MULTIPLIER"  : 2,
   "UNCONFIRMED_TRANSACTION_TTL_SECONDS_PER_BLOCK" : 3600,  // Seconds per block difference
   "UPDATE_REQUEST_BLOCK_HASH_COUNT" : 10,

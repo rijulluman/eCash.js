@@ -15,8 +15,8 @@
     }
   },
 
-  "default_broadcast_sockets" : ["http://10.0.0.244:3001"],
-  "miner_broadcast_sockets"   : ["http://10.0.0.244:3002"],
+  "default_broadcast_sockets" : [],
+  "miner_broadcast_sockets"   : [],
   "express_port": 3000,
   "socket_io_port" : 3001,
   "miner_io_port" : 3002
