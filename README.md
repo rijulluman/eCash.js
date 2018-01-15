@@ -7,7 +7,7 @@ LinkedIn: www.linkedin.com/in/rijulluman
 Availability: Summer 2018 Full Time internship (Can continue as a part time intern after summer) 
 Preferably near Sacramento, SF, San Jose or LA
 
-This is a cryptocurrency based on a acombination of Proof-of-Work and Proof-of-Stake.
+This is a cryptocurrency based on a combination of Proof-of-Work and Proof-of-Stake.
 The main objective of this project was for me to learn the inner workings of cryptocurrencies(especially Bitcoin)
 It took around 40 hours to develop this project.
 
@@ -16,8 +16,8 @@ I have used MongoDB to store the blockchain, Redis to store Unconfirmed Transact
 This project covers the following features:
 1. Create a new Public/Private Key pair (Wallet address)
 2. Check any wallets balance (using public key)
-3. Send and receive coins
-4. Miner software
+3. Send and receive coins (Via Wallet Node)
+4. Miner Software
 5. Ability to update the blockchain, and manage forks in the blockchain
 
 Demo Presentation of this Project available here: https://youtu.be/WS4KbFY5Zwo
