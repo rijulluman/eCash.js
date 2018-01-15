@@ -1,10 +1,16 @@
 # RLC
 Author: Rijul Luman ( Masters in Computer Science - Sacramento State University )
+
 Location: Sacramento, California
+
 Contact: +1 (916)796-7815
+
 Email: rijul.luman@gmail.com
+
 LinkedIn: www.linkedin.com/in/rijulluman 
+
 Availability: Summer 2018 Full Time internship (Can continue as a part time intern after summer) 
+
 Preferably near Sacramento, SF, San Jose or LA
 
 This is a cryptocurrency based on a combination of Proof-of-Work and Proof-of-Stake.
