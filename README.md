@@ -29,7 +29,7 @@ This project covers the following features:
 Demo Presentation of this Project available here: https://youtu.be/WS4KbFY5Zwo
 Clear version of the video used in the Demo Presentation: https://youtu.be/tzT791uWvkE
 
-(Sorry for the inconvenience, I am bad at video editing, hence was unable to merge the 2 videos into 1 view)
+(Sorry for the inconvenience, I am not good at video editing, hence couldn't merge and sync the 2 videos into 1 view)
 
 All the features are developed using Node.js. I am aware Node.js is not a good language for such a sensitive project, but due to time limitations I chose the language I am most comfortable with.(I had 2 other projects for my other courses and had only 4 weeks before my Finals to complete all these projects)
 
