@@ -9,9 +9,9 @@ Email: rijul.luman@gmail.com
 
 LinkedIn: www.linkedin.com/in/rijulluman 
 
-Availability: Summer 2018 Full Time internship (Can continue as a part time intern after summer) 
+Availability: December 2018 - Software Development (Full-Time) 
 
-Preferably near Sacramento, SF, San Jose or LA
+Location Preference: Sacramento, San Francisco, San Jose, Los Angeles
 
 This is a cryptocurrency based on a combination of Proof-of-Work and Proof-of-Stake.
 The main objective of this project was for me to learn the inner workings of cryptocurrencies(especially Bitcoin)
@@ -29,13 +29,12 @@ This project covers the following features:
 Demo Presentation of this Project available here: https://youtu.be/WS4KbFY5Zwo
 Clear version of the video used in the Demo Presentation: https://youtu.be/tzT791uWvkE
 
-(Sorry for the inconvenience, I am not good at video editing, hence couldn't merge and sync the 2 videos into 1 view)
 
-All the features are developed using Node.js. I am aware Node.js is not a good language for such a sensitive project, but due to time limitations I chose the language I am most comfortable with.(I had 2 other projects for my other courses and had only 4 weeks before my Finals to complete all these projects)
+All the features are developed using Node.js. I am aware Node.js is not a good language for such a security sensitive project, but due to time limitations I chose the language I am most comfortable with. (I had 2 other projects for other courses in the same semester and had only 4 weeks before my Finals to complete all these projects)
 
 All the functionalities are available as API endpoints.
 
 This project assumes that all connected network nodes are authenticated and trust-worthy. But in real-world scenarios this assumption makes this project completely unusable.
-This project is not complete and has a lot of work remaining, but I have decided to stop working on it as it has a very limited future, also there may be exploits in the Chrome V8 engine that can be used to find serious loop-holes in my project.
+This project is not complete and has a lot of work remaining, but I have decided to stop working on it as it has a very limited future, also there may be exploits in the Chrome V8 engine that can be used to find serious loop-holes in this project.
 
-I plan to develop a complete cryptocurrency as a part of my Graduate Project, if interested please check my profile again around December 2018.
+I plan to develop a complete cryptocurrency as my Masters Project, please check my github page again around December 2018 : https://github.com/rijulluman
