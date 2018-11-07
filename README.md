@@ -9,7 +9,7 @@ Email: rijul.luman@gmail.com
 
 LinkedIn: www.linkedin.com/in/rijulluman 
 
-Availability: December 2018 - Software Development (Full-Time) 
+Availability: June 2019 - Software Development (Full-Time) 
 
 Location Preference: Sacramento, San Francisco, San Jose, Los Angeles
 
@@ -37,4 +37,4 @@ All the functionalities are available as API endpoints.
 This project assumes that all connected network nodes are authenticated and trust-worthy. But in real-world scenarios this assumption makes this project completely unusable.
 This project is not complete and has a lot of work remaining, but I have decided to stop working on it as it has a very limited future, also there may be exploits in the Chrome V8 engine that can be used to find serious loop-holes in this project.
 
-I plan to develop a complete cryptocurrency as my Masters Project, please check my github page again around December 2018 : https://github.com/rijulluman
+I plan to develop a complete cryptocurrency as my Masters Project, please check my github page again around June 2019 : https://github.com/rijulluman
