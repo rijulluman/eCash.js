@@ -36,5 +36,3 @@ All the functionalities are available as API endpoints.
 
 This project assumes that all connected network nodes are authenticated and trust-worthy. But in real-world scenarios this assumption makes this project completely unusable.
 This project is not complete and has a lot of work remaining, but I have decided to stop working on it as it has a very limited future, also there may be exploits in the Chrome V8 engine that can be used to find serious loop-holes in this project.
-
-I plan to develop a complete cryptocurrency as my Masters Project, please check my github page again around June 2019 : https://github.com/rijulluman
