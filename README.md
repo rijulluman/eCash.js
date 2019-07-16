@@ -1,4 +1,4 @@
-# RLC
+# eCash.js
 Author: Rijul Luman ( Masters in Computer Science - Sacramento State University )
 
 Location: Sacramento, California
